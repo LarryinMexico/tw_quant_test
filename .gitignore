@@ -1,0 +1,9 @@
+.venv/
+.env
+finmind_cache/
+twse_cache/
+*.pkl
+*.html
+__pycache__/
+.DS_Store
+.agent/
