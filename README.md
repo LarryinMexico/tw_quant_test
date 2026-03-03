@@ -1,4 +1,4 @@
-台股ML終極動能量化交易系統 v6
+台股ML終極動能量化交易系統
 
 這是一套基於Python與MachineLearning的台股量化選股與自動回測紙上交易系統
 本系統採用FinMind作為免費每日資料來源
@@ -15,11 +15,11 @@
 03_fix_financial 針對EPS稅後淨利做專屬抓取與修正
 
 2 回測與策略層
-strategy_v6 V6終極模型
+strategy終極模型
 利用過去三年動能與籌碼建立特徵
 經過LightGBM特徵篩選
 並套用趨勢濾網產出每月推薦的Top20股票機率分佈並交給vectorbt回測
-generate_report_v6 生成14張圖表的PlotlyDashboard
+generate_report 生成14張圖表的PlotlyDashboard
 具備極高精準度的淨值回撤風險等分析數據
 
 3 實盤與紙上交易
@@ -30,7 +30,7 @@ live_trade 每日盤後從雲端自動啟動
 portfolio 你的虛擬存摺
 紀錄目前可用的現金餘額買進的股票清單以及過往績效歷史
 
-為什麼V6是終極版
+為什麼是終極版
 經過v4到v7的演化測試
 由於2022至2024年主要是AI成長股的牛市
 價值投資因子反而會導致模型錯失飆漲的暴發股
@@ -43,7 +43,7 @@ portfolio 你的虛擬存摺
 
 source .venv/bin/activate
 python3 01_fetch_finmind_data.py
-./run_v6.sh
+./run.sh
 
 雲端全自動化設計
 

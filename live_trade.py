@@ -3,7 +3,7 @@
 live_trade.py
 =============
 虛擬基金（紙上交易）核心引擎。
-讀取 portfolio.json 與 strategy_v6.py 產出的訊號，進行淨值結算與選股推播。
+讀取 portfolio.json 與 strategy.py 產出的訊號，進行淨值結算與選股推播。
 """
 
 import os
@@ -48,7 +48,7 @@ close_wide = pd.read_pickle(os.path.join(CACHE_DIR, "close_wide.pkl"))
 latest_date = close_wide.index[-1]
 latest_prices = close_wide.loc[latest_date].dropna()
 
-weights_df = pd.read_pickle("weights_v6.pkl")
+weights_df = pd.read_pickle("weights.pkl")
 # 取出策略「最新一天」的目標權重（通常是月底產生的下個月權重）
 target_weights = weights_df.iloc[-1]
 target_weights = target_weights[target_weights > 0]
@@ -115,7 +115,7 @@ if len(pf["history"]) >= 2:
     nav_change = (current_nav / prev_nav) - 1
     nav_change_str = f"📈 日報酬 {nav_change:+.2%}\n"
 
-msg = f"""📊 台股ML虛擬基金 v6
+msg = f"""📊 台股ML虛擬基金
 📅 日期 {latest_date.date()}
 💰 總淨值 {current_nav:,.0f}
 💵 剩餘現金 {pf['cash']:,.0f}

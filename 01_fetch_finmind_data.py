@@ -153,7 +153,7 @@ if __name__ == "__main__":
                   "TaiwanStockInstitutionalInvestorsBuySell", "institution")
     
     # Step 5: 合併成 Wide-form
-    print("\n🔧 合併成 FinLab 相容的 Wide-form...")
+    print("\n🔧 合併成  Wide-form...")
     close_wide = load_and_pivot("price", "close")
     if close_wide is not None:
         close_wide.to_pickle(os.path.join(CACHE_DIR, "close_wide.pkl"))

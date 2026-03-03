@@ -17,11 +17,11 @@ navs = [row["nav"] for row in pf["history"]]
 
 fig.add_trace(go.Scatter(
     x=dates, y=navs, mode="lines+markers",
-    name="V6 NAV", line=dict(color="#00FFAA", width=3)
+    name="NAV", line=dict(color="#00FFAA", width=3)
 ))
 
 fig.update_layout(
-    title="台股ML虛擬基金 V6 績效追蹤",
+    title="台股ML虛擬基金 績效追蹤",
     plot_bgcolor="#111111",
     paper_bgcolor="#111111",
     font=dict(color="#ECF0F1"),
@@ -48,7 +48,7 @@ full_page = f"""
 <html>
 <head>
     <meta charset="utf-8">
-    <title>V6 Live Dashboard</title>
+    <title>Live Dashboard</title>
     <style>
         body {{
             background-color: #0b0c10;
@@ -75,7 +75,7 @@ full_page = f"""
 </head>
 <body>
     <div class="container">
-        <h1>V6 量化實盤追蹤看板</h1>
+        <h1>量化實盤追蹤看板</h1>
         <div class="nav-box">
             <div>今日總淨值 $ {pf['cash'] + sum(shares * latest_prices.get(stock, 0) for stock, shares in pf['positions'].items()):,.0f}</div>
             <div style="font-size: 16px; color: #aaa; margin-top: 10px;">現金部位 $ {pf['cash']:,.0f}</div>

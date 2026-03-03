@@ -1,5 +1,5 @@
 """
-generate_report_v6.py
+generate_report.py
 ==================
 Comprehensive backtest HTML tearsheet using Plotly.
 All labels in English to avoid font rendering issues.
@@ -24,7 +24,7 @@ close.index.name = "date"
 close.columns.name = "stock_id"
 close_m = close.resample("ME").last()
 
-preds   = pd.read_pickle("predictions_v6.pkl")
+preds   = pd.read_pickle("predictions.pkl")
 X, y = None, None
 
 stock_list = pd.read_pickle("finmind_cache/stock_list.pkl")
@@ -62,9 +62,9 @@ position_df = pd.DataFrame(pos_rows).T
 # ─── 3. Performance computation (FROM EXACT VECTORBT) ───────────────────────
 print("[3/5] Loading Vectorbt exact equity...")
 
-eq_v6      = pd.read_pickle("eq_v6.pkl")
+eq      = pd.read_pickle("eq.pkl")
 eq_bm      = pd.read_pickle("bm_eq.pkl")
-weights_df = pd.read_pickle("weights_v6.pkl")
+weights_df = pd.read_pickle("weights.pkl")
 
 # We build position matrix and holdings based off weights_df
 active_stocks = (weights_df > 0)
@@ -75,7 +75,7 @@ for date, row in active_stocks.iterrows():
     held = row[row]
     holdings_over_time[date] = held.index.tolist()
 
-strategy_ret = eq_v6.resample("ME").last().pct_change().dropna()
+strategy_ret = eq.resample("ME").last().pct_change().dropna()
 bm_monthly   = eq_bm.resample("ME").last().pct_change().dropna()
 excess_ret   = strategy_ret - bm_monthly
 
@@ -84,17 +84,17 @@ bm_equity = (1 + bm_monthly).cumprod()
 
 INIT_CASH = 1000000
 # total ret based on exact end value to make it match strategy engine exactly
-total_ret = (eq_v6.iloc[-1] / INIT_CASH) - 1
-n_years   = (eq_v6.index[-1] - eq_v6.index[0]).days / 365.25
-cagr      = (eq_v6.iloc[-1] / INIT_CASH) ** (1/n_years) - 1
+total_ret = (eq.iloc[-1] / INIT_CASH) - 1
+n_years   = (eq.index[-1] - eq.index[0]).days / 365.25
+cagr      = (eq.iloc[-1] / INIT_CASH) ** (1/n_years) - 1
 
 vol_m     = strategy_ret.std()
 vol_ann   = vol_m * (12 ** 0.5)
 sharpe_ann = (strategy_ret.mean() / vol_m) * (12 ** 0.5) if vol_m > 0 else 0
 
 # drawdown exactly from daily eq
-cummax_daily = eq_v6.cummax()
-drawdown_daily = (eq_v6 - cummax_daily) / cummax_daily
+cummax_daily = eq.cummax()
+drawdown_daily = (eq - cummax_daily) / cummax_daily
 max_dd = drawdown_daily.min()
 
 drawdown = (equity - equity.cummax()) / equity.cummax()
@@ -225,7 +225,7 @@ figs_html.append(("Performance Summary", fig_summary.to_html(full_html=False, in
 
 # ── Panel 2: Cumulative Returns ──────────────────────────────────────────────
 fig_equity = go.Figure()
-fig_equity.add_trace(go.Scatter(x=eq_v6.index, y=eq_v6.values/INIT_CASH, name="Strategy v6",
+fig_equity.add_trace(go.Scatter(x=eq.index, y=eq.values/INIT_CASH, name="Strategy",
                                 line=dict(color=RED, width=2)))
 fig_equity.add_trace(go.Scatter(x=eq_bm.index, y=eq_bm.values/INIT_CASH, name="Benchmark (0050)",
                                 line=dict(color=GRAY, width=1.5, dash="dot")))
@@ -489,7 +489,7 @@ HTML = f"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ML Stock Strategy v6 — Backtest Report</title>
+<title>ML Stock Strategy — Backtest Report</title>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
   :root {{
@@ -539,12 +539,12 @@ HTML = f"""<!DOCTYPE html>
 </head>
 <body>
 <nav>
-  <h1>ML Strategy v6</h1>
+  <h1>ML Strategy</h1>
   <ul>{NAV_ITEMS}</ul>
 </nav>
 <main>
   <header>
-    <h1>ML Stock Strategy v6 — Backtest Report (Vectorbt Accuracy)</h1>
+    <h1>ML Stock Strategy — Backtest Report (Vectorbt Accuracy)</h1>
     <p>Walk-Forward Purged CV &nbsp;|&nbsp; LightGBM &nbsp;|&nbsp; Top-30 Monthly Rebalance &nbsp;|&nbsp;
        Period: {equity.index[0].strftime('%Y-%m')} ~ {equity.index[-1].strftime('%Y-%m')} &nbsp;|&nbsp;
        Generated: 2026-02-28</p>
@@ -555,7 +555,7 @@ HTML = f"""<!DOCTYPE html>
 </body>
 </html>"""
 
-output_path = "backtest_report_v6.html"
+output_path = "backtest_report.html"
 with open(output_path, "w", encoding="utf-8") as f:
     f.write(HTML)
 

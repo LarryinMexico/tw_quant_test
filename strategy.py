@@ -8,7 +8,7 @@ Improvements over v3:
   A3. Confidence-weighted positions (rank softmax, not equal)
   A4. TOP_K = 20 (more concentrated alpha)
   A5. Tuned LightGBM w/ early stopping
-  A6. vectorbt for backtesting (no FinLab token needed)
+  A6. vectorbt for backtesting 
 
 Run:
     source .venv/bin/activate
@@ -421,7 +421,7 @@ bm_close    = close_clean["0050"] if "0050" in close_clean.columns else close_cl
 print(f"  Universe : {c_vbt.shape[1]} stocks × {c_vbt.shape[0]} days")
 print(f"  Running…")
 
-pf_v6 = vbt.Portfolio.from_orders(
+pf = vbt.Portfolio.from_orders(
     close       = c_vbt,
     size        = w_vbt,
     size_type   = "targetpercent",
@@ -435,7 +435,7 @@ pf_v6 = vbt.Portfolio.from_orders(
 pf_bm = vbt.Portfolio.from_holding(bm_close, init_cash=INIT_CASH)
 
 # ─── Print stats ─────────────────────────────────────────────────────────────
-stats_v6 = pf_v6.stats()
+stats = pf.stats()
 stats_bm  = pf_bm.stats()
 
 COMPARE_KEYS = [
@@ -445,32 +445,32 @@ COMPARE_KEYS = [
 ]
 
 # Also compute annualized return manually from vbt equity
-eq      = pf_v6.value()
+eq      = pf.value()
 n_years = (eq.index[-1] - eq.index[0]).days / 365.25
-cagr_v6 = (eq.iloc[-1] / INIT_CASH) ** (1/n_years) - 1
+cagr = (eq.iloc[-1] / INIT_CASH) ** (1/n_years) - 1
 
 eq_bm     = pf_bm.value()
 cagr_bm   = (eq_bm.iloc[-1] / INIT_CASH) ** (1/n_years) - 1
 
 monthly_eq   = eq.resample("ME").last()
 monthly_ret_ = monthly_eq.pct_change().dropna()
-sharpe_v6    = (monthly_ret_.mean() / monthly_ret_.std()) * (12**0.5)
+sharpe    = (monthly_ret_.mean() / monthly_ret_.std()) * (12**0.5)
 
 monthly_bm_ = eq_bm.resample("ME").last().pct_change().dropna()
 sharpe_bm   = (monthly_bm_.mean() / monthly_bm_.std()) * (12**0.5)
 
 print()
 print("  ╔══════════════════════════════════════════════════════╗")
-print("  ║   Strategy v6 vs Benchmark (0050) — vectorbt        ║")
+print("  ║   Strategy vs Benchmark (0050) — vectorbt        ║")
 print("  ╠════════════════════╦═══════════════╦════════════════╣")
-print("  ║ Metric             ║  Strategy v6  ║  Benchmark     ║")
+print("  ║ Metric             ║  Strategy  ║  Benchmark     ║")
 print("  ╠════════════════════╬═══════════════╬════════════════╣")
 
 rows = [
-    ("CAGR",           f"{cagr_v6:.2%}",               f"{cagr_bm:.2%}"),
-    ("Total Return",   f"{stats_v6['Total Return [%]']:.2f}%",  f"{stats_bm['Total Return [%]']:.2f}%"),
-    ("Max Drawdown",   f"{stats_v6['Max Drawdown [%]']:.2f}%",  f"{stats_bm['Max Drawdown [%]']:.2f}%"),
-    ("Sharpe (Monthly Ann.)", f"{sharpe_v6:.2f}",        f"{sharpe_bm:.2f}"),
+    ("CAGR",           f"{cagr:.2%}",               f"{cagr_bm:.2%}"),
+    ("Total Return",   f"{stats['Total Return [%]']:.2f}%",  f"{stats_bm['Total Return [%]']:.2f}%"),
+    ("Max Drawdown",   f"{stats['Max Drawdown [%]']:.2f}%",  f"{stats_bm['Max Drawdown [%]']:.2f}%"),
+    ("Sharpe (Monthly Ann.)", f"{sharpe:.2f}",        f"{sharpe_bm:.2f}"),
     ("Active Months",  f"{active_months} / {len(weights_df)}", "35 / 35"),
 ]
 for label, s_val, b_val in rows:
@@ -480,21 +480,21 @@ for label, s_val, b_val in rows:
 
 print("  ╚════════════════════╩═══════════════╩════════════════╝")
 
-# v5 vs v6 comparison
+# v5 vs comparison
 print()
-print("  ── v5 vs v6 comparison (vectorbt, same period) ──")
+print("  ── v5 vs comparison (vectorbt, same period) ──")
 print(f"  v5  Total Return : 59.97%    Max DD: 22.53%   Sharpe: 0.90")
-print(f"  v6  Total Return : {stats_v6['Total Return [%]']:.2f}%    "
-      f"Max DD: {stats_v6['Max Drawdown [%]']:.2f}%   "
-      f"Sharpe: {sharpe_v6:.2f}")
+print(f"   Total Return : {stats['Total Return [%]']:.2f}%    "
+      f"Max DD: {stats['Max Drawdown [%]']:.2f}%   "
+      f"Sharpe: {sharpe:.2f}")
 
 # Save predictions for report reuse
-final_preds.to_pickle("predictions_v6.pkl")
-weights_df.to_pickle("weights_v6.pkl")
-eq.to_pickle("eq_v6.pkl")
+final_preds.to_pickle("predictions.pkl")
+weights_df.to_pickle("weights.pkl")
+eq.to_pickle("eq.pkl")
 eq_bm.to_pickle("bm_eq.pkl")
-print("\n  📦 Saved: predictions_v6.pkl / weights_v6.pkl / eq_v6.pkl")
+print("\n  📦 Saved: predictions.pkl / weights.pkl / eq.pkl")
 
 print("\n✅ Done!")
 import subprocess
-subprocess.run(["python3", "generate_report_v6.py"])
+subprocess.run(["python3", "generate_report.py"])
