@@ -44,22 +44,65 @@ def send_line_message(text):
         print(f"網路錯誤 {e}")
 
 print("1 讀取資料與策略訊號")
-close_wide = pd.read_pickle(os.path.join(CACHE_DIR, "close_wide.pkl"))
-latest_date = close_wide.index[-1]
-latest_prices = close_wide.loc[latest_date].dropna()
-
 weights_df = pd.read_pickle("weights.pkl")
 # 取出策略「最新一天」的目標權重（通常是月底產生的下個月權重）
 target_weights = weights_df.iloc[-1]
 target_weights = target_weights[target_weights > 0]
 
-# 3. 讀取虛擬存摺
+# 讀取虛擬存摺
 if not os.path.exists(PORTFOLIO_FILE):
     # 如果完全沒有檔，給予 100 萬起始本金
     pf = {"cash": 1000000.0, "last_trade_date": None, "positions": {}, "history": []}
 else:
     with open(PORTFOLIO_FILE, "r") as f:
         pf = json.load(f)
+
+def get_latest_prices(stock_ids):
+    import requests
+    import yfinance as yf
+    try:
+        url = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo'
+        resp = requests.get(url, timeout=10)
+        info = pd.DataFrame(resp.json()['data'])
+        twse = set(info[info['type'] == 'twse']['stock_id'])
+        tpex = set(info[info['type'] == 'tpex']['stock_id'])
+    except:
+        twse = set()
+        tpex = set()
+    
+    tickers = []
+    mapping = {}
+    for s in stock_ids:
+        if str(s) in twse:
+            t = f'{s}.TW'
+        elif str(s) in tpex:
+            t = f'{s}.TWO'
+        else:
+            t = f'{s}.TW'
+        tickers.append(t)
+        mapping[t] = str(s)
+        
+    import contextlib, io
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        data = yf.download(tickers, period='5d', progress=False)
+        
+    if 'Close' not in data.columns:
+        if len(tickers) == 1:
+            close_df = pd.DataFrame({tickers[0]: data['Close']}) 
+        else:
+            raise ValueError('Failed to fetch prices')
+    else:
+        close_df = data['Close']
+        
+    close_df = close_df.dropna(axis=1, how='all')
+    latest_date = close_df.index[-1]
+    last_row = close_df.iloc[-1]
+    last_row.index = [mapping.get(x, x) for x in last_row.index]
+    return latest_date, last_row.dropna()
+
+stock_ids = list(set(target_weights.index) | set(pf["positions"].keys()))
+latest_date, latest_prices = get_latest_prices(stock_ids)
+
 
 print(f"2 結算淨值 最新收盤日 {latest_date.date()}")
 
@@ -103,6 +146,10 @@ if is_rebalance_day:
 
 # 紀錄歷史淨值
 pf["history"].append({"date": str(latest_date.date()), "nav": current_nav})
+
+# 存儲資訊給Dashboard用
+pf["latest_date"] = str(latest_date.date())
+pf["latest_prices"] = latest_prices.to_dict()
 
 with open(PORTFOLIO_FILE, "w") as f:
     json.dump(pf, f, indent=2, ensure_ascii=False)

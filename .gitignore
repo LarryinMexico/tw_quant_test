@@ -2,6 +2,8 @@
 .env
 finmind_cache/
 twse_cache/
+!weights.pkl
+!predictions.pkl
 *.pkl
 *.html
 __pycache__/

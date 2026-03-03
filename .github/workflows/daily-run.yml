@@ -22,25 +22,9 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Cache FinMind Data
-        uses: actions/cache@v3
-        with:
-          path: finmind_cache
-          key: ubuntu-latest-finmind-${{ github.run_id }}
-          restore-keys: |
-            ubuntu-latest-finmind-
-
       - name: Install Dependencies
         run: |
-          pip install pandas numpy lightgbm vectorbt plotly requests tqdm python-dotenv jupyter
-
-      - name: Daily Data Update
-        env:
-          FINMIND_API_TOKEN: ${{ secrets.FINMIND_API_TOKEN }}
-        run: |
-          python3 data_loaders/01_fetch_finmind_data.py
-          python3 data_loaders/03_fix_financial.py
-          python3 data_loaders/02_fetch_fundamental_data.py
+          pip install pandas numpy lightgbm vectorbt plotly requests tqdm python-dotenv jupyter yfinance
 
       - name: Update Portfolio and Send LINE Notification
         env:

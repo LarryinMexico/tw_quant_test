@@ -6,9 +6,8 @@ import os
 with open("portfolio.json", "r") as f:
     pf = json.load(f)
 
-close_wide = pd.read_pickle(os.path.join("finmind_cache", "close_wide.pkl"))
-latest_date = close_wide.index[-1]
-latest_prices = close_wide.loc[latest_date].dropna()
+latest_date = pf.get("latest_date", "N/A")
+latest_prices = pf.get("latest_prices", {})
 
 fig = go.Figure()
 
@@ -79,7 +78,7 @@ full_page = f"""
         <div class="nav-box">
             <div>今日總淨值 $ {pf['cash'] + sum(shares * latest_prices.get(stock, 0) for stock, shares in pf['positions'].items()):,.0f}</div>
             <div style="font-size: 16px; color: #aaa; margin-top: 10px;">現金部位 $ {pf['cash']:,.0f}</div>
-            <div style="font-size: 14px; color: #888; margin-top: 5px;">最後更新日期 {latest_date.date()}</div>
+            <div style="font-size: 14px; color: #888; margin-top: 5px;">最後更新日期 {latest_date}</div>
         </div>
         
         <div class="chart-box">
