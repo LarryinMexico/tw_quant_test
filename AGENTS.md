@@ -11,7 +11,7 @@
 - **資料來源**：FinMind API（資料存在 `finmind_cache/`）
 - **ML 模型**：LightGBM（處理 NaN 非常強，支援 Non-linear）
 - **回測框架**：vectorbt（快速向量化回測）
-- **視覺化報表**：Plotly（`generate_report.py` 生成 HTML）
+- **視覺化報表**：Plotly（`reports/generate_report.py` 生成 HTML）
 
 ---
 
@@ -21,11 +21,11 @@
 嚴守 FinMind 免費版每小時 600 次限制，腳本具備斷點續傳功能。
 ```bash
 # 抓取價量、營收、三大法人 (~4 小時)
-source .venv/bin/activate && python3 01_fetch_finmind_data.py
+source .venv/bin/activate && python3 data_loaders/01_fetch_finmind_data.py
 
 # 抓取基本面 (PE/PB/殖利率/財務比率) (~4~12 小時)
-# 建議先只跑 per: python3 02_fetch_fundamental_data.py --dataset per
-source .venv/bin/activate && python3 02_fetch_fundamental_data.py --dataset all
+# 建議先只跑 per: python3 data_loaders/02_fetch_fundamental_data.py --dataset per
+source .venv/bin/activate && python3 data_loaders/02_fetch_fundamental_data.py --dataset all
 ```
 
 ### 2. 執行策略回測 (最新 版)
@@ -35,7 +35,7 @@ source .venv/bin/activate && python3 strategy.py
 
 ### 3. 輸出 HTML 績效報表
 ```bash
-source .venv/bin/activate && python3 generate_report.py
+source .venv/bin/activate && python3 reports/generate_report.py
 open backtest_report.html
 ```
 
@@ -48,7 +48,7 @@ open backtest_report.html
 | **v3** | Pandas 3.0 相容修復、自建簡單回測模擬器 | CAGR +34.9% (只算有進場月份) |
 | **v4** | 全面改用 vectorbt。14 個技術面/籌碼面因子。Multi-signal Regime (0050 60MA+20MA)。Softmax 權重。 | CAGR **+21.5%** / 勝率 56% / Max DD -21% |
 | **v5** | 加入 4 個基本面因子 (Earnings Yield, PB, 殖利率, PE Momentum)。修改 LightGBM NaN 處理門檻 (保留 60% 因子覆蓋即可) | CAGR **+17.0%** / Max DD -22% |
-| **** | 回歸 v4 純動量與籌碼配置 (棄用會拉低近年績效的估值因子)。完全串接 vectorbt 每日精確淨值至 Plotly，並修復了下載真實 EPS 的腳本 (03_fix_financial.py)。 | CAGR **+21.52%** / Total Return **+79.18%** / Sharpe 1.11 |
+| **** | 回歸 v4 純動量與籌碼配置 (棄用會拉低近年績效的估值因子)。完全串接 vectorbt 每日精確淨值至 Plotly，並修復了下載真實 EPS 的腳本 (data_loaders/03_fix_financial.py)。 | CAGR **+21.52%** / Total Return **+79.18%** / Sharpe 1.11 |
 
 > **洞見**：v5 績效低於 v4，原因在於 2022-2024 是 AI 成長股領漲的行情，價值因子反而會錯失飆股。直接打包了 v4 的強大動能邏輯與完美的 vectorbt 精確報表，為目前最強穩定版本。
 
@@ -57,17 +57,17 @@ open backtest_report.html
 ## 檔案結構說明
 
 ### 核心腳本 (目前使用中)
-- `01_fetch_finmind_data.py` - 下載台股 OHLCV, 營收, 法人
-- `02_fetch_fundamental_data.py` - 下載台股其他基本面 (PE, PB)
-- `03_fix_financial.py` - 修正後的財報下載器 (抓取 EPS, 現金流量等)
+- `data_loaders/01_fetch_finmind_data.py` - 下載台股 OHLCV, 營收, 法人
+- `data_loaders/02_fetch_fundamental_data.py` - 下載台股其他基本面 (PE, PB)
+- `data_loaders/03_fix_financial.py` - 修正後的財報下載器 (抓取 EPS, 現金流量等)
 - `strategy.py` - 終極動能策略 (最佳版本，精確輸出 vectorbt 狀態)
-- `generate_report.py` - 利用 vectorbt 精確變數生成 14 張圖表的終極 HTML 報告
+- `reports/generate_report.py` - 利用 vectorbt 精確變數生成 14 張圖表的終極 HTML 報告
 - `finmind_cache/` - 所有原始 `.pkl` 快取檔與寬表 (Wide DataFrame)
 
 ### 已廢棄 / 可刪除的舊檔案
 以往基於 Jupyter 和舊版策略的腳本，已全數被清除或取代。
 - 舊版策略: `strategy_v3.py`, `strategy_v4.py`, `strategy_v5.py`
-- 舊版報表: `generate_report.py`, `generate_report_v5.py`
+- 舊版報表: `reports/generate_report.py`, `generate_report_v5.py`
 
 ---
 

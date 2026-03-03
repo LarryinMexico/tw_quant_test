@@ -555,7 +555,7 @@ HTML = f"""<!DOCTYPE html>
 </body>
 </html>"""
 
-output_path = "backtest_report.html"
+output_path = "frontend/backtest_report.html"
 with open(output_path, "w", encoding="utf-8") as f:
     f.write(HTML)
 

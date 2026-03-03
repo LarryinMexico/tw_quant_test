@@ -497,4 +497,4 @@ print("\n  📦 Saved: predictions.pkl / weights.pkl / eq.pkl")
 
 print("\n✅ Done!")
 import subprocess
-subprocess.run(["python3", "generate_report.py"])
+subprocess.run(["python3", "reports/generate_report.py"])

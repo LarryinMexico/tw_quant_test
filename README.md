@@ -42,7 +42,7 @@ portfolio 你的虛擬存摺
 只要依序執行下列動作
 
 source .venv/bin/activate
-python3 01_fetch_finmind_data.py
+python3 data_loaders/01_fetch_finmind_data.py
 ./run.sh
 
 雲端全自動化設計

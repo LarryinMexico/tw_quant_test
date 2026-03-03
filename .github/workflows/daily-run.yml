@@ -38,9 +38,9 @@ jobs:
         env:
           FINMIND_API_TOKEN: ${{ secrets.FINMIND_API_TOKEN }}
         run: |
-          python3 01_fetch_finmind_data.py
-          python3 03_fix_financial.py
-          python3 02_fetch_fundamental_data.py
+          python3 data_loaders/01_fetch_finmind_data.py
+          python3 data_loaders/03_fix_financial.py
+          python3 data_loaders/02_fetch_fundamental_data.py
 
       - name: Update Portfolio and Send LINE Notification
         env:
@@ -48,13 +48,13 @@ jobs:
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
         run: |
           python3 live_trade.py
-          python3 generate_live_dashboard.py
+          python3 reports/generate_live_dashboard.py
 
       - name: Commit and Push Updates
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add portfolio.json finmind_cache/ index.html
+          git add portfolio.json finmind_cache/ frontend/index.html
           git commit -m "chore auto-update portfolio and data" || echo "No changes to commit"
           git push
 
@@ -64,7 +64,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: './frontend'
 
       - name: Deploy to GitHub Pages
         id: deployment

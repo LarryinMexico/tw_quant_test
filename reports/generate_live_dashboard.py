@@ -95,7 +95,7 @@ full_page = f"""
 </html>
 """
 
-with open("index.html", "w") as f:
+with open("frontend/index.html", "w") as f:
     f.write(full_page)
 
-print("首頁已生成 index.html")
+print("首頁已生成 frontend/index.html")
