@@ -163,23 +163,23 @@ nav_change_str = ""
 if len(pf["history"]) >= 2:
     prev_nav = pf["history"][-2]["nav"]
     nav_change = (current_nav / prev_nav) - 1
-    nav_change_str = f"📈 日報酬 {nav_change:+.2%}\n"
+    nav_change_str = f"日報酬 {nav_change:+.2%}\n"
 
-msg = f"""📊 台股ML虛擬基金
-📅 日期 {latest_date.date()}
-💰 總淨值 {current_nav:,.0f}
-💵 剩餘現金 {pf['cash']:,.0f}
+msg = f"""台股ML虛擬基金
+日期 {latest_date.date()}
+總淨值 {current_nav:.0f}
+剩餘現金 {pf['cash']:.0f}
 {nav_change_str}
-📦 目前持股 前5大
+目前持股前5大
 """
 
 top_holdings = sorted(pf["positions"].items(), key=lambda x: x[1]*latest_prices.get(x[0], 0), reverse=True)[:5]
 for stock, shares in top_holdings:
     val = shares * latest_prices.get(stock, 0)
-    msg += f"- {stock} {shares}股 {val:,.0f}\n"
+    msg += f"{stock} {shares}股 {val:.0f}\n"
 
 if trade_logs:
-    msg += f"\n🚨 今日交易紀錄\n" + "\n".join(trade_logs[:5]) + ("\n等" if len(trade_logs)>5 else "")
+    msg += f"\n今日交易紀錄\n" + "\n".join(trade_logs[:5]) + ("\n等" if len(trade_logs)>5 else "")
 
 send_line_message(msg)
 print("\n今日實盤模擬完成")
