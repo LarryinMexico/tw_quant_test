@@ -175,19 +175,6 @@ for key in dataset_keys:
     sample_df = pd.read_pickle(os.path.join(save_dir, sample_files[0]))
     print(f"\n  {subdir} 欄位: {sample_df.columns.tolist()}")
 
-    # Determine which columns to pivot based on dataset
-    if key == "per":
-        value_cols = ["PER", "PBR", "dividend_yield"]
-    elif key == "financial":
-        # Will vary — use auto detect
-        value_cols = [c for c in sample_df.columns if c not in ["date", "stock_id", "type"]][:5]
-    elif key == "balance_sheet":
-        value_cols = [c for c in sample_df.columns if c not in ["date", "stock_id", "type"]][:5]
-    else:
-        continue
-
-    print(f"  合併欄位: {value_cols}")
-
     frames = []
     for f in tqdm(pkl_files, desc=f"  合併 {subdir}"):
         path = os.path.join(save_dir, f)
@@ -207,17 +194,40 @@ for key in dataset_keys:
         continue
 
     all_df = pd.concat(frames, ignore_index=True)
+    all_df = all_df.drop_duplicates()
 
-    for col in value_cols:
-        if col not in all_df.columns:
-            continue
-        try:
-            wide = all_df.pivot_table(index="date", columns="stock_id", values=col)
-            out_path = os.path.join(CACHE_DIR, f"{subdir}_{col.lower()}_wide.pkl")
-            wide.to_pickle(out_path)
-            print(f"  ✅  {out_path}  shape={wide.shape}")
-        except Exception as e:
-            print(f"  ⚠️  {col} 合併失敗: {e}")
+    if key == "per":
+        for col in ["PER", "PBR", "dividend_yield"]:
+            if col in all_df.columns:
+                try:
+                    wide = all_df.pivot_table(index="date", columns="stock_id", values=col)
+                    out_path = os.path.join(CACHE_DIR, f"{subdir}_{col.lower()}_wide.pkl")
+                    wide.to_pickle(out_path)
+                    print(f"  ✅  {out_path}  shape={wide.shape}")
+                except Exception as e:
+                    print(f"  ⚠️  {col} 合併失敗: {e}")
+
+    elif key in ["financial", "balance_sheet"]:
+        # The dataframe is long format: columns are [date, stock_id, type, value, origin_name]
+        # For 'financial' we want EPS, GrossProfit, Revenue, etc.
+        # For 'balance_sheet' we want TotalAssets, TotalLiabilitiesEquity, EquityAttributableToOwnersOfParent...
+        if "type" in all_df.columns and "value" in all_df.columns:
+            types_to_extract = {
+                "financial": ["EPS", "Revenue", "GrossProfit", "OperatingIncome", "NetIncome"],
+                "balance_sheet": ["TotalAssets", "EquityAttributableToOwnersOfParent"]
+            }.get(key, [])
+            
+            for t in types_to_extract:
+                sub_df = all_df[all_df["type"] == t]
+                if sub_df.empty:
+                    continue
+                try:
+                    wide = sub_df.pivot_table(index="date", columns="stock_id", values="value")
+                    out_path = os.path.join(CACHE_DIR, f"{subdir}_{t.lower()}_wide.pkl")
+                    wide.to_pickle(out_path)
+                    print(f"  ✅  {out_path}  shape={wide.shape}")
+                except Exception as e:
+                    print(f"  ⚠️  {t} 合併失敗: {e}")
 
 print("\n✅  所有任務完成！")
 print("\n使用方式（在 strategy_v5.py 中）：")
