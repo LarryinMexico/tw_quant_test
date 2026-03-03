@@ -40,28 +40,7 @@ API_URL    = "https://api.finmindtrade.com/api/v4/data"
 for subdir in ["price", "revenue", "institution"]:
     os.makedirs(os.path.join(CACHE_DIR, subdir), exist_ok=True)
 
-def api_get(dataset, stock_id):
-    """呼叫 FinMind API，回傳 DataFrame，失敗回傳 None"""
-    try:
-        resp = requests.get(API_URL, params={
-            "dataset": dataset,
-            "data_id": stock_id,
-            "start_date": START_DATE,
-            "end_date": END_DATE,
-            "token": TOKEN
-        }, timeout=30)
-        result = resp.json()
-        if result.get("status") == 200:
-            if result.get("data"):
-                return pd.DataFrame(result["data"])
-            else:
-                return pd.DataFrame()  # 明確回傳空的 DataFrame 代表「成功連線但無此資料」
-        else:
-            print(f"  ⚠️  {stock_id} / {dataset} 狀態碼非 200: {result.get('msg')}")
-            return None
-    except Exception as e:
-        print(f"  ⚠️  {stock_id} / {dataset} 錯誤: {e}")
-        return None
+# Original api_get function removed as logic integrated into fetch_dataset
 
 def get_stock_list():
     """取得台股上市+上櫃股票清單"""
@@ -92,19 +71,58 @@ def fetch_dataset(stock_ids, dataset_name, api_dataset, subdir):
         cache_file = os.path.join(CACHE_DIR, subdir, f"{sid}.pkl")
         empty_marker = os.path.join(CACHE_DIR, subdir, f"{sid}.empty")
         
-        if os.path.exists(cache_file) or os.path.exists(empty_marker):
+        req_start = START_DATE
+        existing_df = None
+        
+        if os.path.exists(empty_marker):
             skipped += 1
             continue
+            
+        if os.path.exists(cache_file):
+            try:
+                existing_df = pd.read_pickle(cache_file)
+                if not existing_df.empty:
+                    max_date = pd.to_datetime(existing_df["date"]).max()
+                    req_start = (max_date + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+                    
+                    if pd.to_datetime(req_start) > pd.to_datetime(END_DATE):
+                        # 已經是最新的，不需再抓
+                        skipped += 1
+                        continue
+            except Exception:
+                pass # 如果損壞，就從頭開始抓
         
-        df = api_get(api_dataset, sid)
-        if df is not None:  # 不是網路錯誤
-            if not df.empty:
-                df.to_pickle(cache_file)
-                downloaded += 1
+        try:
+            resp = requests.get(API_URL, params={
+                "dataset": api_dataset,
+                "data_id": sid,
+                "start_date": req_start,     # <-- 動態起點
+                "end_date": END_DATE,
+                "token": TOKEN
+            }, timeout=30)
+            result = resp.json()
+            
+            if result.get("status") == 200:
+                new_data = result.get("data", [])
+                new_df = pd.DataFrame(new_data)
+                
+                if not new_df.empty:
+                    if existing_df is not None:
+                        df = pd.concat([existing_df, new_df], ignore_index=True)
+                    else:
+                        df = new_df
+                    df.to_pickle(cache_file)
+                    downloaded += 1
+                else:
+                    if existing_df is None:
+                        # 從來就沒有資料，真的空殼
+                        with open(empty_marker, 'w') as f:
+                            f.write('')
+                    skipped += 1
             else:
-                # 建立 .empty 標記檔，下次不再向 FinMind 重新請求這個冷門空股票
-                with open(empty_marker, 'w') as f:
-                    f.write('')
+                print(f"  ⚠️  {sid} / {api_dataset} 狀態碼非 200: {result.get('msg')}")
+        except Exception as e:
+            print(f"  ⚠️  {sid} / {api_dataset} 錯誤: {e}")
         
         time.sleep(SLEEP_SEC)
     
