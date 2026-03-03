@@ -38,7 +38,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add portfolio.json finmind_cache/ frontend/index.html
+          git add portfolio.json frontend/index.html
           git commit -m "chore auto-update portfolio and data" || echo "No changes to commit"
           git push
 
