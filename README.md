@@ -1,5 +1,3 @@
-# 台股ML終極動能量化交易系統
-
 這是一套基於Python與MachineLearning的台股量化選股與自動回測紙上交易系統
 本系統採用FinMind作為免費每日資料來源
 並以vectorbt進行回測
