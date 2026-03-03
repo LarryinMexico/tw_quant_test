@@ -145,7 +145,10 @@ if is_rebalance_day:
     pf["last_trade_date"] = str(latest_date.date())
 
 # 紀錄歷史淨值
-pf["history"].append({"date": str(latest_date.date()), "nav": current_nav})
+if len(pf["history"]) > 0 and pf["history"][-1]["date"] == str(latest_date.date()):
+    pf["history"][-1]["nav"] = current_nav
+else:
+    pf["history"].append({"date": str(latest_date.date()), "nav": current_nav})
 
 # 存儲資訊給Dashboard用
 pf["latest_date"] = str(latest_date.date())
