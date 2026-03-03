@@ -24,7 +24,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install pandas numpy lightgbm vectorbt plotly requests tqdm python-dotenv jupyter yfinance
+          pip install pandas numpy lightgbm vectorbt plotly requests tqdm python-dotenv jupyter yfinance pyarrow
 
       - name: Update Portfolio and Send LINE Notification
         env:
