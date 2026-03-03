@@ -559,6 +559,6 @@ output_path = "frontend/backtest_report.html"
 with open(output_path, "w", encoding="utf-8") as f:
     f.write(HTML)
 
-print(f"\n✅ Report saved: {output_path}")
+print(f"\n Report saved: {output_path}")
 print(f"   Sections: {len(figs_html)}")
 print(f"   Open with: open {output_path}")
