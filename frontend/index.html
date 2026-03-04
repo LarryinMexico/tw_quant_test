@@ -1,171 +1,292 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Live Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView Style Dashboard</title>
     <style>
-        body {
-            background-color: #0b0c10;
-            color: #c5c6c7;
-            font-family: -apple-system, sans-serif;
-            margin: 0; padding: 20px;
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif; }
+        body { background-color: #131722; color: #D1D4DC; padding: 16px; font-size: 14px; }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 16px;
+            max-width: 1600px;
+            margin: 0 auto;
+            height: calc(100vh - 32px);
         }
-        .container { max-width: 900px; margin: 0 auto; }
-        h1 { color: #66fcf1; text-align: center; }
-        .nav-box {
-            background: #1f2833; padding: 20px;
-            border-radius: 10px; margin: 20px 0;
-            text-align: center; font-size: 24px;
-        }
-        .chart-box {
-            background: #1f2833; padding: 20px;
-            border-radius: 10px; margin: 20px 0;
-        }
-        .holdings-box {
-            background: #1f2833; padding: 20px;
-            border-radius: 10px; margin: 20px 0;
-        }
+        
+        @media (max-width: 1024px) { .grid-container { grid-template-columns: 1fr; height: auto; } }
+
+        .panel { background-color: #1E222D; border-radius: 4px; border: 1px solid #2A2E39; display: flex; flex-direction: column; overflow: hidden; }
+        .panel-header { padding: 12px 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #2A2E39; display: flex; justify-content: space-between; align-items: center; }
+        .panel-content { padding: 16px; flex: 1; overflow-y: auto; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1E222D; }
+        ::-webkit-scrollbar-thumb { background: #363C4E; border-radius: 3px; }
+
+        .header-top { grid-column: 1 / -1; display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
+        .ticker-info { display: flex; align-items: center; gap: 24px; }
+        
+        .metric-group { display: flex; flex-direction: column; }
+        .metric-title { color: #8D94A6; font-size: 12px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-val { font-size: 20px; font-weight: 600; }
+        .metric-sub { font-size: 14px; font-weight: 500; margin-left: 8px; display: inline-block; }
+        
+        .table-header { display: flex; padding: 8px 16px; color: #8D94A6; font-size: 12px; border-bottom: 1px solid #2A2E39; }
+        .table-row { display: flex; padding: 12px 16px; border-bottom: 1px solid #2A2E39; font-size: 13px; align-items: center; transition: background 0.15s; }
+        .table-row:hover { background-color: rgba(255,255,255,0.03); cursor: default; }
+        
+        .col-ticker { flex: 1; font-weight: 600; }
+        .col-right { flex: 1; text-align: right; }
+        
+        .dot { height: 8px; width: 8px; background-color: #22AB94; border-radius: 50%; display: inline-block; margin-right: 6px; box-shadow: 0 0 8px #22AB94; }
+        
+        .donut-container { position: relative; width: 200px; height: 200px; margin: 0 auto 16px; }
+        .donut-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .donut-val { font-size: 20px; font-weight: 600; color: #D1D4DC; }
+        .donut-sub { font-size: 11px; color: #8D94A6; text-transform: uppercase; margin-top: 2px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>量化實盤追蹤看板</h1>
-        <div class="nav-box">
-            <div>今日總淨值 $ 956,421</div>
-            <div style="font-size: 16px; color: #aaa; margin-top: 10px;">現金部位 $ 21,672</div>
-            <div style="font-size: 14px; color: #888; margin-top: 5px;">最後更新日期 2026-03-04</div>
+
+<div class="grid-container">
+    
+    <!-- Top Bar Metrics -->
+    <div class="header-top panel">
+        <div class="panel-content" style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="ticker-info">
+                <div class="metric-group">
+                    <span class="metric-title"><span class="dot"></span> Live Model Portfolio</span>
+                    <div>
+                        <span class="metric-val">$956,421</span>
+                        <span class="metric-sub" style="color: #F05350;">-4.22% (1D)</span>
+                        <span class="metric-sub" style="color: #F05350; margin-left: 12px;">-4.36% (All)</span>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 40px; text-align: right;">
+                <div class="metric-group">
+                    <span class="metric-title">Equity</span>
+                    <span style="font-size: 15px;">$934,749</span>
+                </div>
+                <div class="metric-group">
+                    <span class="metric-title">Cash</span>
+                    <span style="font-size: 15px;">$21,672</span>
+                </div>
+                <div class="metric-group" style="text-align: right;">
+                    <span class="metric-title">Market Date</span>
+                    <span style="font-size: 15px;">2026-03-04</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chart -->
+    <div class="panel">
+        <div class="panel-header">
+            <span>Performance Curve</span>
+        </div>
+        <div class="panel-content" style="padding: 0;">
+            <div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.3.1.min.js" integrity="sha256-4rD3fugVb/nVJYUv5Ky3v+fYXoouHaBSP20WIJuEiWg=" crossorigin="anonymous"></script>                <div id="6e85d8e6-46f4-4064-a1c5-51a495fc9bf8" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("6e85d8e6-46f4-4064-a1c5-51a495fc9bf8")) {                    Plotly.newPlot(                        "6e85d8e6-46f4-4064-a1c5-51a495fc9bf8",                        [{"fill":"tozeroy","fillcolor":"rgba(41, 98, 255, 0.15)","hoverinfo":"x+y","line":{"color":"#2962FF","width":2},"mode":"lines","x":["2026-03-03","2026-03-04"],"y":[998607.8664682965,956421.1179751019],"type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"l":50,"r":20,"t":20,"b":40},"font":{"color":"#D1D4DC"},"xaxis":{"showgrid":true,"gridcolor":"#2B3139","tickcolor":"#8D94A6"},"yaxis":{"showgrid":true,"gridcolor":"#2B3139","tickformat":",.0f","side":"right","tickcolor":"#8D94A6"},"plot_bgcolor":"#1E222D","paper_bgcolor":"#1E222D","hovermode":"x unified"},                        {"displayModeBar": false, "responsive": true}                    )                };            </script>        </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar (Allocation & Holdings) -->
+    <div class="panel" style="display: flex; flex-direction: column;">
+        <div class="panel-header">
+            <span>Portfolio Allocation</span>
+        </div>
+        <div style="padding: 24px 16px 8px; border-bottom: 1px solid #2A2E39;">
+            <div class="donut-container">
+                <div>                            <div id="5da471b5-153c-4fc4-b28a-9a869b4e4a18" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("5da471b5-153c-4fc4-b28a-9a869b4e4a18")) {                    Plotly.newPlot(                        "5da471b5-153c-4fc4-b28a-9a869b4e4a18",                        [{"hole":0.65,"hoverinfo":"label+percent","labels":["Cash","4558","6180","4127","3056","6589","3224","2543","2929","5353","4746","2536","3211","4549","5314","5438","6558","8104","3529","4931","4577"],"marker":{"colors":["#8D94A6","hsl(0, 65%, 60%)","hsl(45, 65%, 60%)","hsl(90, 65%, 60%)","hsl(135, 65%, 60%)","hsl(180, 65%, 60%)","hsl(225, 65%, 60%)","hsl(270, 65%, 60%)","hsl(315, 65%, 60%)","hsl(0, 65%, 60%)","hsl(45, 65%, 60%)","hsl(90, 65%, 60%)","hsl(135, 65%, 60%)","hsl(180, 65%, 60%)","hsl(225, 65%, 60%)","hsl(270, 65%, 60%)","hsl(315, 65%, 60%)","hsl(0, 65%, 60%)","hsl(45, 65%, 60%)","hsl(90, 65%, 60%)","hsl(135, 65%, 60%)"],"line":{"color":"#1E222D","width":2}},"textinfo":"none","values":[21672.054746494785,48849.0,48484.80146789551,48302.10103225708,47879.14779281616,47790.0,47782.49912261963,47668.0,47639.96155548096,47601.401500701904,47407.5,46823.700773239136,46452.0,46272.0,46022.40087890625,45951.15171432495,45477.899419784546,45020.497970581055,44800.0,44461.0,44064.0],"type":"pie"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"margin":{"l":10,"r":10,"t":10,"b":10},"font":{"color":"#D1D4DC"},"showlegend":false,"plot_bgcolor":"#1E222D","paper_bgcolor":"#1E222D"},                        {"displayModeBar": false, "responsive": true}                    )                };            </script>        </div>
+                <div class="donut-label">
+                    <div class="donut-val">20</div>
+                    <div class="donut-sub">Positions</div>
+                </div>
+            </div>
         </div>
         
-        <div class="chart-box">
-            <div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.4.0.min.js" integrity="sha256-KEmPoupLpFyGMyGAiOsiNDbKDKAvxXAn/W+oQa0ZAfk=" crossorigin="anonymous"></script>                <div id="28d3bd26-6d8a-4a54-8fef-3445d7eaafdf" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("28d3bd26-6d8a-4a54-8fef-3445d7eaafdf")) {                    Plotly.newPlot(                        "28d3bd26-6d8a-4a54-8fef-3445d7eaafdf",                        [{"line":{"color":"#00FFAA","width":3},"mode":"lines+markers","name":"NAV","x":["2026-03-03","2026-03-04"],"y":[998607.8664682965,956421.1179751019],"type":"scatter"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"font":{"color":"#ECF0F1"},"xaxis":{"showgrid":false},"yaxis":{"showgrid":true,"gridcolor":"#333333"},"title":{"text":"\u53f0\u80a1ML\u865b\u64ec\u57fa\u91d1 \u7e3e\u6548\u8ffd\u8e64"},"plot_bgcolor":"#111111","paper_bgcolor":"#111111"},                        {"responsive": true}                    )                };            </script>        </div>
+        <div class="panel-header" style="border-top: none;">
+            <span>Current Holdings</span>
         </div>
-        
-        <div class="holdings-box">
-            <h2 style="color:#66fcf1;">現有持股 Top 20</h2>
+        <div class="table-header">
+            <div class="col-ticker">Symbol</div>
+            <div class="col-right">Price</div>
+            <div class="col-right">Shares</div>
+            <div class="col-right">Value</div>
+            <div class="col-right">Weight</div>
+        </div>
+        <div style="flex: 1; overflow-y: auto;">
             
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">2536</span>
-        <span>2027 股</span>
-        <span>$46,824</span>
+    <div class="table-row">
+        <div class="col-ticker">4558</div>
+        <div class="col-right">19.00</div>
+        <div class="col-right">2571</div>
+        <div class="col-right">$48,849</div>
+        <div class="col-right" style="color: #2962FF;">5.1%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">3056</span>
-        <span>2893 股</span>
-        <span>$47,879</span>
+    <div class="table-row">
+        <div class="col-ticker">6180</div>
+        <div class="col-right">50.40</div>
+        <div class="col-right">962</div>
+        <div class="col-right">$48,485</div>
+        <div class="col-right" style="color: #2962FF;">5.1%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">3211</span>
-        <span>158 股</span>
-        <span>$46,452</span>
+    <div class="table-row">
+        <div class="col-ticker">4127</div>
+        <div class="col-right">35.70</div>
+        <div class="col-right">1353</div>
+        <div class="col-right">$48,302</div>
+        <div class="col-right" style="color: #2962FF;">5.1%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">3224</span>
-        <span>1150 股</span>
-        <span>$47,782</span>
+    <div class="table-row">
+        <div class="col-ticker">3056</div>
+        <div class="col-right">16.55</div>
+        <div class="col-right">2893</div>
+        <div class="col-right">$47,879</div>
+        <div class="col-right" style="color: #2962FF;">5.0%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">3529</span>
-        <span>20 股</span>
-        <span>$44,800</span>
+    <div class="table-row">
+        <div class="col-ticker">6589</div>
+        <div class="col-right">59.00</div>
+        <div class="col-right">810</div>
+        <div class="col-right">$47,790</div>
+        <div class="col-right" style="color: #2962FF;">5.0%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">4127</span>
-        <span>1353 股</span>
-        <span>$48,302</span>
+    <div class="table-row">
+        <div class="col-ticker">3224</div>
+        <div class="col-right">41.55</div>
+        <div class="col-right">1150</div>
+        <div class="col-right">$47,782</div>
+        <div class="col-right" style="color: #2962FF;">5.0%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">4549</span>
-        <span>482 股</span>
-        <span>$46,272</span>
+    <div class="table-row">
+        <div class="col-ticker">2543</div>
+        <div class="col-right">68.00</div>
+        <div class="col-right">701</div>
+        <div class="col-right">$47,668</div>
+        <div class="col-right" style="color: #2962FF;">5.0%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">4746</span>
-        <span>903 股</span>
-        <span>$47,408</span>
+    <div class="table-row">
+        <div class="col-ticker">2929</div>
+        <div class="col-right">7.01</div>
+        <div class="col-right">6796</div>
+        <div class="col-right">$47,640</div>
+        <div class="col-right" style="color: #2962FF;">5.0%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">4931</span>
-        <span>346 股</span>
-        <span>$44,461</span>
+    <div class="table-row">
+        <div class="col-ticker">5353</div>
+        <div class="col-right">24.20</div>
+        <div class="col-right">1967</div>
+        <div class="col-right">$47,601</div>
+        <div class="col-right" style="color: #2962FF;">5.0%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">5353</span>
-        <span>1967 股</span>
-        <span>$47,601</span>
+    <div class="table-row">
+        <div class="col-ticker">4746</div>
+        <div class="col-right">52.50</div>
+        <div class="col-right">903</div>
+        <div class="col-right">$47,408</div>
+        <div class="col-right" style="color: #2962FF;">5.0%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">5438</span>
-        <span>2247 股</span>
-        <span>$45,951</span>
+    <div class="table-row">
+        <div class="col-ticker">2536</div>
+        <div class="col-right">23.10</div>
+        <div class="col-right">2027</div>
+        <div class="col-right">$46,824</div>
+        <div class="col-right" style="color: #2962FF;">4.9%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">6180</span>
-        <span>962 股</span>
-        <span>$48,485</span>
+    <div class="table-row">
+        <div class="col-ticker">3211</div>
+        <div class="col-right">294.00</div>
+        <div class="col-right">158</div>
+        <div class="col-right">$46,452</div>
+        <div class="col-right" style="color: #2962FF;">4.9%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">6558</span>
-        <span>1521 股</span>
-        <span>$45,478</span>
+    <div class="table-row">
+        <div class="col-ticker">4549</div>
+        <div class="col-right">96.00</div>
+        <div class="col-right">482</div>
+        <div class="col-right">$46,272</div>
+        <div class="col-right" style="color: #2962FF;">4.8%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">6589</span>
-        <span>810 股</span>
-        <span>$47,790</span>
+    <div class="table-row">
+        <div class="col-ticker">5314</div>
+        <div class="col-right">79.90</div>
+        <div class="col-right">576</div>
+        <div class="col-right">$46,022</div>
+        <div class="col-right" style="color: #2962FF;">4.8%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">8104</span>
-        <span>1330 股</span>
-        <span>$45,020</span>
+    <div class="table-row">
+        <div class="col-ticker">5438</div>
+        <div class="col-right">20.45</div>
+        <div class="col-right">2247</div>
+        <div class="col-right">$45,951</div>
+        <div class="col-right" style="color: #2962FF;">4.8%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">2543</span>
-        <span>701 股</span>
-        <span>$47,668</span>
+    <div class="table-row">
+        <div class="col-ticker">6558</div>
+        <div class="col-right">29.90</div>
+        <div class="col-right">1521</div>
+        <div class="col-right">$45,478</div>
+        <div class="col-right" style="color: #2962FF;">4.8%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">2929</span>
-        <span>6796 股</span>
-        <span>$47,640</span>
+    <div class="table-row">
+        <div class="col-ticker">8104</div>
+        <div class="col-right">33.85</div>
+        <div class="col-right">1330</div>
+        <div class="col-right">$45,020</div>
+        <div class="col-right" style="color: #2962FF;">4.7%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">4577</span>
-        <span>544 股</span>
-        <span>$44,064</span>
+    <div class="table-row">
+        <div class="col-ticker">3529</div>
+        <div class="col-right">2240.00</div>
+        <div class="col-right">20</div>
+        <div class="col-right">$44,800</div>
+        <div class="col-right" style="color: #2962FF;">4.7%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">4558</span>
-        <span>2571 股</span>
-        <span>$48,849</span>
+    <div class="table-row">
+        <div class="col-ticker">4931</div>
+        <div class="col-right">128.50</div>
+        <div class="col-right">346</div>
+        <div class="col-right">$44,461</div>
+        <div class="col-right" style="color: #2962FF;">4.6%</div>
     </div>
     
-    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #333;">
-        <span style="font-weight:bold; color:#00FFAA;">5314</span>
-        <span>576 股</span>
-        <span>$46,022</span>
+    <div class="table-row">
+        <div class="col-ticker">4577</div>
+        <div class="col-right">81.00</div>
+        <div class="col-right">544</div>
+        <div class="col-right">$44,064</div>
+        <div class="col-right" style="color: #2962FF;">4.6%</div>
     </div>
     
         </div>
     </div>
+</div>
+
 </body>
 </html>
