@@ -115,32 +115,61 @@ for stock, shares in pf["positions"].items():
 
 current_nav = pf["cash"] + equity_value
 
-# 判斷是否需要「換股」(建倉)
-# 如果部位是空的，或是換月了，我們就執行交易（簡化版：目前如果是空手就無腦買）
-is_rebalance_day = len(pf["positions"]) == 0
+# 🎯 新增大盤空頭濾網即時判斷 (0050 季線)
+is_bull_market = True
+try:
+    import yfinance as yf
+    tw50_data = yf.download("0050.TW", period="100d", progress=False)
+    if not tw50_data.empty and "Close" in tw50_data.columns:
+        tw50_close = tw50_data["Close"]
+        if isinstance(tw50_close, pd.DataFrame): 
+            tw50_close = tw50_close.iloc[:, 0]
+        tw50_ma60 = tw50_close.rolling(60).mean().iloc[-1]
+        tw50_latest = tw50_close.iloc[-1]
+        is_bull_market = bool(tw50_latest > tw50_ma60)
+except Exception as e:
+    print(f"空頭濾網檢測失敗，維持現狀 {e}")
+
+if not is_bull_market:
+    print("🚨 觸發大盤空頭濾網 (0050 跌破季線)，啟動緊急清倉避險！")
+    target_weights = pd.Series(dtype=float)
+
+# 判斷是否需要「換股」(建倉/調整/清倉)
+current_stocks = set(pf["positions"].keys())
+target_stocks = set(target_weights.keys())
+is_rebalance_day = (current_stocks != target_stocks) or (len(pf["positions"]) == 0 and not target_weights.empty)
 
 trade_logs = []
 if is_rebalance_day:
-    print(f"  觸發建倉換股邏輯 分配 {current_nav:,.0f} 資金")
-    pf["cash"] = current_nav
+    print(f"  觸發部位調整邏輯 (目前現金: {pf['cash']:,.0f})")
+    
+    # 全部平倉退回現金
+    for stock, shares in list(pf["positions"].items()):
+        if stock in latest_prices:
+            price = latest_prices[stock]
+            revenue = shares * price
+            fee_tax = revenue * (0.001425 + 0.003) # 包含交易稅
+            pf["cash"] += (revenue - fee_tax)
+            trade_logs.append(f"賣出 {stock} {shares}股 {price:.1f}")
     pf["positions"] = {}
+    current_nav = pf["cash"] # 全部變回現金後更新最新淨值基準
     
-    investable_cash = current_nav * 0.98
-    
-    for stock, w in target_weights.items():
-        if stock not in latest_prices:
-            continue
-        budget = investable_cash * w
-        price = latest_prices[stock]
-        shares = int(budget // price)
-        cost = shares * price
-        
-        if shares > 0:
-            pf["positions"][stock] = shares
-            pf["cash"] -= cost
-            fee = cost * 0.001425
-            pf["cash"] -= fee
-            trade_logs.append(f"買進 {stock} {shares}股 {price:.1f}")
+    if not target_weights.empty:
+        investable_cash = current_nav * 0.98
+        for stock, w in target_weights.items():
+            if stock not in latest_prices:
+                continue
+            budget = investable_cash * w
+            price = latest_prices[stock]
+            shares = int(budget // price)
+            cost = shares * price
+            
+            if shares > 0:
+                pf["positions"][stock] = shares
+                pf["cash"] -= cost
+                fee = cost * 0.001425
+                pf["cash"] -= fee
+                trade_logs.append(f"買進 {stock} {shares}股 {price:.1f}")
             
     pf["last_trade_date"] = str(latest_date.date())
 
