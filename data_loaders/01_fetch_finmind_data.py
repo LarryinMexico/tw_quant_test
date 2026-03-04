@@ -31,7 +31,7 @@ if not TOKEN:
 
 # ===== 設定 =====
 START_DATE = "2019-01-01"
-END_DATE   = "2024-12-31"
+END_DATE   = "2026-12-31"  # 每次下載都會只抓增量，這裡設遠未來即可
 CACHE_DIR  = "finmind_cache"
 SLEEP_SEC  = 6.1   # 每次請求後等待秒數（600次/小時 = 1次/6秒）
 API_URL    = "https://api.finmindtrade.com/api/v4/data"

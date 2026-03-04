@@ -29,16 +29,20 @@ print("=" * 62)
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 CACHE          = "finmind_cache"
-TRAIN_MONTHS   = 36       # rolling train window
+TRAIN_MONTHS   = 48       # rolling train window (延長到 48 個月)
 PURGE_MONTHS   = 1        # purge gap (data-leakage prevention)
 STEP_MONTHS    = 3        # retrain every N months
-TEST_START     = pd.Timestamp("2022-01-01")
-TOP_K          = 20       # concentrated portfolio (was 30)
-WEIGHT_TEMP    = 5.0      # softmax temperature for confidence weighting
+TEST_START     = pd.Timestamp("2019-01-01")  # ✅ FIX1: 延長回測期（原 2022-01-01）
+TOP_K          = 20       # concentrated portfolio
+WEIGHT_TEMP    = 5.0      # softmax temperature
 FEE            = 1.425 / 1000 / 3
 TAX            = 3 / 1000
 STOP_LOSS      = 0.10
 INIT_CASH      = 1_000_000
+# ✅ FIX2: 流動性過濾門檻（30天均量 > 3000萬台幣才可進場）
+LIQUIDITY_MIN  = 30_000_000
+# ✅ FIX3: 因子精簡 — 自動選 ICIR 絕對值前 N 個
+TOP_FACTORS_K  = 8
 
 # ─── 1. Data loading ─────────────────────────────────────────────────────────
 print("\n[1/7] Loading data...")
@@ -283,6 +287,11 @@ ic_df = (pd.DataFrame(ic_results).T
            .sort_values("ICIR", key=abs, ascending=False))
 print(ic_df.round(4).to_string())
 
+# ✅ FIX3: 自動選出 ICIR 最高的 TOP_FACTORS_K 個因子
+top_factors = ic_df.head(TOP_FACTORS_K).index.tolist()
+print(f"\n  ▶ Auto-selected top {TOP_FACTORS_K} factors by |ICIR|: {top_factors}")
+X = X[top_factors]   # 只保留高 ICIR 因子，降低 overfitting 風險
+
 # ─── 5. Walk-forward Purged training ─────────────────────────────────────────
 print("\n[5/7] Walk-Forward Purged training…")
 
@@ -291,16 +300,17 @@ try:
 except ImportError:
     print("❌ Install lightgbm first"); sys.exit(1)
 
+# ✅ FIX3: 強化 LightGBM 正則化，降低 Overfitting
 LGBM_PARAMS = dict(
-    n_estimators=800,
-    max_depth=4,
-    learning_rate=0.008,
-    num_leaves=31,
-    reg_alpha=0.1,
-    reg_lambda=1.0,
-    min_child_samples=20,
-    subsample=0.8,
-    colsample_bytree=0.8,
+    n_estimators=500,        # 從 800 降至 500（避免過擬合）
+    max_depth=3,             # 從 4 降至 3（更淺的樹）
+    learning_rate=0.01,      # 從 0.008 略升（配合更少 estimators）
+    num_leaves=15,           # 從 31 降至 15（對應 depth=3）
+    reg_alpha=0.5,           # 從 0.1 升至 0.5（更強 L1 正則）
+    reg_lambda=2.0,          # 從 1.0 升至 2.0（更強 L2 正則）
+    min_child_samples=30,    # 從 20 升至 30（每葉節點至少30樣本）
+    subsample=0.7,           # 從 0.8 降至 0.7（更多隨機性）
+    colsample_bytree=0.7,    # 從 0.8 降至 0.7
     random_state=42,
     n_jobs=-1,
     verbose=-1,
@@ -383,9 +393,22 @@ def softmax_weights(scores: pd.Series, temp: float, top_k: int) -> pd.Series:
     exp_  = np.exp((top - top.max()) / temp)   # numerical stable
     return exp_ / exp_.sum()
 
+# ✅ FIX2: 預計算月度流動性（30日均量，月度取最後一天）
+money_m_liq = money_wide.rolling(30).mean().resample("ME").last()
+
 weight_rows = {}
 for date, row in pred_wide.iterrows():
     row = row.dropna()
+
+    # ── 流動性過濾：只保留 30日均量 > 3000萬的股票 ──────────────────────────
+    if date in money_m_liq.index:
+        liq_row  = money_m_liq.loc[date].reindex(row.index)
+        liq_ok   = liq_row[liq_row >= LIQUIDITY_MIN].index
+        filtered = len(row) - len(liq_ok)
+        row      = row[liq_ok]
+        if filtered > 0:
+            pass  # silent: print(f"  {date.date()}: 流動性過濾移除 {filtered} 支")
+
     if is_bull_monthly.get(date, False) and len(row) >= TOP_K:
         weight_rows[date] = softmax_weights(row, WEIGHT_TEMP, TOP_K)
     else:
