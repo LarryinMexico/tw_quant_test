@@ -299,11 +299,6 @@ html_content = f"""<!DOCTYPE html>
                           text-transform: uppercase; letter-spacing: 0.5px; }}
         .metric-val {{ font-size: 22px; font-weight: 700; }}
         .metric-sub {{ font-size: 13px; font-weight: 600; margin-left: 10px; }}
-        .dot {{ height: 8px; width: 8px; background: {TV_GREEN}; border-radius: 50%;
-                display: inline-block; margin-right: 6px;
-                box-shadow: 0 0 8px {TV_GREEN};
-                animation: blink 2s infinite; }}
-        @keyframes blink {{ 0%,100%{{opacity:1}} 50%{{opacity:.45}} }}
         .header-right {{ display:flex; gap:40px; text-align:right; }}
 
         /* ── Chart panels ── */
@@ -396,7 +391,7 @@ html_content = f"""<!DOCTYPE html>
     <div class="header-bar panel">
         <div class="top-bar-content">
             <div class="metric-group">
-                <span class="metric-title"><span class="dot"></span> Live Model Portfolio</span>
+                <span class="metric-title">模擬交易組合</span>
                 <div>
                     <span class="metric-val">${current_nav:,.0f}</span>
                     <span class="metric-sub" style="color:{daily_color};">{daily_sign}{daily_ret*100:.2f}% (1D)</span>
@@ -459,7 +454,7 @@ html_content = f"""<!DOCTYPE html>
 <!-- Bottom: NAV History + Trade Log -->
 <div class="grid-bottom">
     <div class="panel">
-        <div class="panel-header">📅 每日淨值歷史（最近30天）</div>
+        <div class="panel-header">每日淨值歷史（最近30天）</div>
         <div class="scroll-body">
             <table class="history-table">
                 <thead><tr><th>日期</th><th>淨值 (NAV)</th><th>當日報酬</th></tr></thead>
@@ -469,7 +464,7 @@ html_content = f"""<!DOCTYPE html>
     </div>
 
     <div class="panel">
-        <div class="panel-header">💼 交易紀錄 &amp; 損益明細</div>
+        <div class="panel-header">交易紀錄 &amp; 損益明細</div>
         <div class="scroll-body">
             {trade_detail_html}
         </div>
@@ -484,5 +479,5 @@ os.makedirs("frontend", exist_ok=True)
 with open("frontend/index.html", "w", encoding="utf-8") as f:
     f.write(html_content)
 
-print("✅ Dashboard 生成完成 → frontend/index.html")
+print("Dashboard 生成完成 → frontend/index.html")
 print(f"   持股: {len(stock_data)} 支，歷史: {len(history)} 天")

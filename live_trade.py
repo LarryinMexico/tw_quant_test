@@ -178,7 +178,7 @@ except Exception as e:
     print(f"  空頭濾網檢測失敗，維持現狀: {e}")
 
 if not is_bull_market:
-    print("🚨 觸發大盤空頭濾網 (0050 跌破季線)，啟動緊急清倉避險！")
+    print("觸發大盤空頭濾網 (0050 跌破季線)，啟動緊急清倉避險！")
     target_weights = pd.Series(dtype=float)
 
 # ─── 7. 換股邏輯 ─────────────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ if len(pf["history"]) >= 2:
 
 # 現金比例警示
 cash_ratio = pf["cash"] / current_nav
-cash_warn  = "" if cash_ratio >= 0.05 else "⚠️ 現金不足5%，流動性偏緊\n"
+cash_warn  = "" if cash_ratio >= 0.05 else "現金不足5%，流動性偏緊\n"
 
 # 持股前5大（含中文名稱）
 top_holdings = sorted(
@@ -298,14 +298,14 @@ if session_pnl is not None:
     sign = "+" if session_pnl >= 0 else ""
     pnl_line = f"換倉損益估算 {sign}{session_pnl:,.0f}\n"
 
-msg = f"""台股ML虛擬基金 📊
+msg = f"""模擬交易 
 日期 {latest_date.date()}
 總淨值 {current_nav:,.0f}
 剩餘現金 {pf['cash']:,.0f} ({cash_ratio:.1%})
 {nav_change_str}{pnl_line}{cash_warn}
 目前持股前5大:
 {top5_lines}
-🔗 Dashboard: {GITHUB_PAGES_URL}"""
+Dashboard: {GITHUB_PAGES_URL}"""
 
 if trade_logs:
     msg += f"\n今日交易紀錄 ({len(trade_logs)}筆)\n"
@@ -314,7 +314,7 @@ if trade_logs:
         msg += f"\n...等{len(trade_logs)}筆"
 
 send_line_message(msg)
-print("\n✅ 今日實盤模擬完成")
+print("\n今日實盤模擬完成")
 print(f"   NAV: {current_nav:,.0f}  現金: {pf['cash']:,.0f} ({cash_ratio:.1%})")
 if session_pnl is not None:
     print(f"   換倉損益估算: {session_pnl:+,.0f}")
