@@ -1,4 +1,5 @@
 {
+  "force_rebalance": true,
   "cash": 21672.054746494785,
   "last_trade_date": "2026-03-03",
   "positions": {
