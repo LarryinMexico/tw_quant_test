@@ -286,11 +286,8 @@ for factor in X.columns:
 ic_df = (pd.DataFrame(ic_results).T
            .sort_values("ICIR", key=abs, ascending=False))
 print(ic_df.round(4).to_string())
-
-# FIX3: 自動選出 ICIR 最高的 TOP_FACTORS_K 個因子
-top_factors = ic_df.head(TOP_FACTORS_K).index.tolist()
-print(f"\n  >> Auto-selected top {TOP_FACTORS_K} factors by |ICIR|: {top_factors}")
-X = X[top_factors]
+print("\n  [NOTE] 上表為全資料探索用，實際因子選擇在各 fold 的訓練資料內進行（Phase 2 lookahead bias 修復）")
+ALL_FACTORS = X.columns.tolist()  # 保留全部因子，fold 內自動篩選
 
 # ─── 5. Walk-forward Purged training ─────────────────────────────────────────
 print("\n[5/7] Walk-Forward Purged training...")
@@ -323,6 +320,8 @@ all_preds         = []
 current_train_end = None
 model             = None
 retrain_count     = 0
+selected_factors  = {}   # 記錄每次 fold 選出的因子
+current_fold_factors = ALL_FACTORS[:TOP_FACTORS_K]  # 第一次預测前的預設
 
 for d in tqdm(test_dates, desc="  Walk-Forward"):
     # Retrain?
@@ -331,16 +330,43 @@ for d in tqdm(test_dates, desc="  Walk-Forward"):
         purge_cutoff   = d - pd.DateOffset(months=PURGE_MONTHS)
         idx_tr = (
             (X.index.get_level_values(0) >= train_start) &
-            (X.index.get_level_values(0) < purge_cutoff)
+            (X.index.get_level_values(0) <  purge_cutoff)
         )
         X_tr, y_tr = X[idx_tr], y[idx_tr]
         if len(X_tr) < 200:
             continue
 
+        # ── Fold-Internal IC 分析：在訓練集內選因子（Phase 2 修復 lookahead bias）
+        # 第一個 fold 用全部因子，後續每次在訓練集內重新計算 ICIR
+        fold_ic = {}
+        train_dates = X_tr.index.get_level_values(0).unique()
+        for factor in ALL_FACTORS:
+            ics_f = []
+            for dt in train_dates:
+                try:
+                    xf = X_tr.loc[dt, factor].dropna() if (dt, factor) in X_tr.columns or True else pd.Series()
+                    # 當 X_tr 是寬表，用 xs 取得特定日期
+                    xf = X_tr.xs(dt, level=0)[factor].dropna()
+                    yf = y_tr.xs(dt, level=0).reindex(xf.index).dropna()
+                    xf = xf.reindex(yf.index)
+                    if len(yf) > 10:
+                        ic_val, _ = spearmanr(xf.values, yf.values)
+                        if not np.isnan(ic_val):
+                            ics_f.append(ic_val)
+                except Exception:
+                    pass
+            s_f = pd.Series(ics_f)
+            fold_ic[factor] = abs(s_f.mean() / (s_f.std() + 1e-8)) if len(s_f) > 3 else 0.0
+
+        current_fold_factors = sorted(fold_ic, key=fold_ic.get, reverse=True)[:TOP_FACTORS_K]
+        selected_factors[d] = current_fold_factors
+
         # Early-stopping on last 20% of train as val
-        cut = int(len(X_tr) * 0.8)
-        X_t_, y_t_ = X_tr.iloc[:cut], y_tr.iloc[:cut]
-        X_v_, y_v_ = X_tr.iloc[cut:], y_tr.iloc[cut:]
+        cut    = int(len(X_tr) * 0.8)
+        X_t_   = X_tr[current_fold_factors].iloc[:cut]
+        y_t_   = y_tr.iloc[:cut]
+        X_v_   = X_tr[current_fold_factors].iloc[cut:]
+        y_v_   = y_tr.iloc[cut:]
 
         model = lgb.LGBMRegressor(**LGBM_PARAMS)
         model.fit(
@@ -352,8 +378,8 @@ for d in tqdm(test_dates, desc="  Walk-Forward"):
         current_train_end = d + pd.DateOffset(months=STEP_MONTHS)
         retrain_count += 1
 
-    # Predict
-    X_d = X[X.index.get_level_values(0) == d]
+    # Predict—用這個 fold 的因子對當日做預測
+    X_d = X[X.index.get_level_values(0) == d][current_fold_factors]
     if model is not None and not X_d.empty:
         preds_d = model.predict(X_d)
         all_preds.append(pd.DataFrame({"y_pred": preds_d}, index=X_d.index))
@@ -361,8 +387,17 @@ for d in tqdm(test_dates, desc="  Walk-Forward"):
 final_preds = pd.concat(all_preds)
 print(f"\n  {len(final_preds):,} predictions — {retrain_count} retrain cycles")
 
-# Feature importance
-fi = (pd.DataFrame({"Factor": X.columns, "Importance": model.feature_importances_})
+# 因子穩定性報告：統計各因子被選中的次數
+from collections import Counter
+factor_counts = Counter(f for factors in selected_factors.values() for f in factors)
+print("\n  Factor selection stability (out of", retrain_count, "retrains):")
+for factor, count in sorted(factor_counts.items(), key=lambda x:-x[1]):
+    bar = "#" * count
+    print(f"    {factor:<20} {count:>2}/{retrain_count}  {bar}")
+
+# Feature importance（最後一次 fold 的模型）
+fi = (pd.DataFrame({"Factor": current_fold_factors,
+                     "Importance": model.feature_importances_})
         .sort_values("Importance", ascending=False))
 print("\n  Feature Importance (last model):")
 print(fi.to_string(index=False))
@@ -460,11 +495,9 @@ pf = vbt.Portfolio.from_orders(
 
 # ─── Print stats ─────────────────────────────────────────────────────────────
 stats = pf.stats()
+eq    = pf.value()   # 先定義 eq，benchmark 計算需要用到 eq.index[-1]
 
 # ── Benchmark：使用 yfinance 抓還原權後的 0050 報酬
-# FinMind 快取的 0050 是「未還原」的原始收盤價，0050 在 2020/11 做過 3:1 分割
-# 若直接用快取資料計算，CAGR 會嚴重失真（顯示 -22%，實際應該 +20% 以上）
-# yfinance auto_adjust=True 會自動做分割還原 + 股息再投入調整
 import yfinance as yf, contextlib, io as _io
 
 print("  Fetching 0050 benchmark from yfinance (split-adjusted)...")
@@ -491,7 +524,6 @@ COMPARE_KEYS = [
     ("Max Drawdown Duration",    "DD Duration (days)"),
 ]
 
-eq      = pf.value()
 n_years = (eq.index[-1] - eq.index[0]).days / 365.25
 cagr = (eq.iloc[-1] / INIT_CASH) ** (1/n_years) - 1
 
