@@ -35,9 +35,9 @@ STEP_MONTHS    = 3        # retrain every N months
 TEST_START     = pd.Timestamp("2019-01-01")  # FIX1: 延長回測期（原 2022-01-01）
 TOP_K          = 20       # concentrated portfolio
 WEIGHT_TEMP    = 5.0      # softmax temperature
-FEE            = 1.425 / 1000 / 3
+FEE            = 1.425 / 1000   # 0.1425% 單邊手續費（vectorbt fees 參數為單邊）
 TAX            = 3 / 1000
-STOP_LOSS      = 0.10
+# STOP_LOSS 已移除（從未實作停損機制）
 INIT_CASH      = 1_000_000
 # FIX2: 流動性過濾門檻（30天均量 > 3000萬台幣才可進場）
 LIQUIDITY_MIN  = 30_000_000
@@ -457,11 +457,33 @@ pf = vbt.Portfolio.from_orders(
     init_cash   = INIT_CASH,
 )
 
-pf_bm = vbt.Portfolio.from_holding(bm_close, init_cash=INIT_CASH)
 
 # ─── Print stats ─────────────────────────────────────────────────────────────
 stats = pf.stats()
-stats_bm  = pf_bm.stats()
+
+# ── Benchmark：使用 yfinance 抓還原權後的 0050 報酬
+# FinMind 快取的 0050 是「未還原」的原始收盤價，0050 在 2020/11 做過 3:1 分割
+# 若直接用快取資料計算，CAGR 會嚴重失真（顯示 -22%，實際應該 +20% 以上）
+# yfinance auto_adjust=True 會自動做分割還原 + 股息再投入調整
+import yfinance as yf, contextlib, io as _io
+
+print("  Fetching 0050 benchmark from yfinance (split-adjusted)...")
+_start_str = TEST_START.strftime("%Y-%m-%d")
+_end_str   = eq.index[-1].strftime("%Y-%m-%d")
+with contextlib.redirect_stdout(_io.StringIO()), contextlib.redirect_stderr(_io.StringIO()):
+    _bm_raw = yf.download("0050.TW", start=_start_str, end=_end_str,
+                           progress=False, auto_adjust=True)
+bm_price    = _bm_raw["Close"].squeeze().dropna()
+n_years_bm  = (bm_price.index[-1] - bm_price.index[0]).days / 365.25
+cagr_bm     = float((bm_price.iloc[-1] / bm_price.iloc[0]) ** (1/n_years_bm) - 1)
+total_ret_bm = float((bm_price.iloc[-1] / bm_price.iloc[0]) - 1)
+bm_ec       = bm_price / bm_price.iloc[0]
+max_dd_bm   = float(((bm_ec - bm_ec.cummax()) / bm_ec.cummax()).min())
+bm_monthly  = bm_price.resample("ME").last().pct_change().dropna()
+sharpe_bm   = float((bm_monthly.mean() / bm_monthly.std()) * (12**0.5))
+eq_bm       = bm_ec * INIT_CASH
+print(f"  0050  CAGR: {cagr_bm:.2%} | Total Ret: {total_ret_bm:.2%} | Sharpe: {sharpe_bm:.2f}")
+
 
 COMPARE_KEYS = [
     ("Total Return [%]",         "Total Return"),
@@ -469,20 +491,13 @@ COMPARE_KEYS = [
     ("Max Drawdown Duration",    "DD Duration (days)"),
 ]
 
-# Also compute annualized return manually from vbt equity
 eq      = pf.value()
 n_years = (eq.index[-1] - eq.index[0]).days / 365.25
 cagr = (eq.iloc[-1] / INIT_CASH) ** (1/n_years) - 1
 
-eq_bm     = pf_bm.value()
-cagr_bm   = (eq_bm.iloc[-1] / INIT_CASH) ** (1/n_years) - 1
-
 monthly_eq   = eq.resample("ME").last()
 monthly_ret_ = monthly_eq.pct_change().dropna()
 sharpe    = (monthly_ret_.mean() / monthly_ret_.std()) * (12**0.5)
-
-monthly_bm_ = eq_bm.resample("ME").last().pct_change().dropna()
-sharpe_bm   = (monthly_bm_.mean() / monthly_bm_.std()) * (12**0.5)
 
 print()
 print("  ╔══════════════════════════════════════════════════════╗")
@@ -492,16 +507,25 @@ print("  ║ Metric             ║  Strategy  ║  Benchmark     ║")
 print("  ╠════════════════════╬═══════════════╬════════════════╣")
 
 rows = [
-    ("CAGR",           f"{cagr:.2%}",               f"{cagr_bm:.2%}"),
-    ("Total Return",   f"{stats['Total Return [%]']:.2f}%",  f"{stats_bm['Total Return [%]']:.2f}%"),
-    ("Max Drawdown",   f"{stats['Max Drawdown [%]']:.2f}%",  f"{stats_bm['Max Drawdown [%]']:.2f}%"),
-    ("Sharpe (Monthly Ann.)", f"{sharpe:.2f}",        f"{sharpe_bm:.2f}"),
-    ("Active Months",  f"{active_months} / {len(weights_df)}", "35 / 35"),
+    ("CAGR",                  f"{cagr:.2%}",                         f"{cagr_bm:.2%}"),
+    ("Total Return",          f"{stats['Total Return [%]']:.2f}%",   f"{total_ret_bm*100:.2f}%"),
+    ("Max Drawdown",          f"{stats['Max Drawdown [%]']:.2f}%",   f"{max_dd_bm*100:.2f}%"),
+    ("Sharpe (Monthly Ann.)", f"{sharpe:.2f}",                        f"{sharpe_bm:.2f}"),
+    ("Active Months",         f"{active_months} / {len(weights_df)}", "N/A (fully invested)"),
 ]
 for label, s_val, b_val in rows:
-    win = "*" if label in ["CAGR","Total Return","Sharpe (Monthly Ann.)"] and float(s_val.rstrip("% ")) > float(b_val.rstrip("% ")) else \
-          "*" if label == "Max Drawdown" and float(s_val.rstrip("% ")) > float(b_val.rstrip("% ")) else " "
-    print(f"  ║ {label:<18} ║ {s_val:>12} {win} ║ {b_val:>13} ║")
+    try:
+        s_num = float(s_val.rstrip("% "))
+        b_num = float(b_val.rstrip("% "))
+        if label == "Max Drawdown":
+            win = "*" if s_num > b_num else " "
+        elif label in ["CAGR", "Total Return", "Sharpe (Monthly Ann.)"]:
+            win = "*" if s_num > b_num else " "
+        else:
+            win = " "
+    except Exception:
+        win = " "
+    print(f"  \u2551 {label:<18} \u2551 {s_val:>12} {win} \u2551 {b_val:>22} \u2551")
 
 print("  ╚════════════════════╩═══════════════╩════════════════╝")
 
