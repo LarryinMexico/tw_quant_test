@@ -120,12 +120,12 @@ GITHUB_PAGES_URL  = "https://larryinmexico.github.io/tw_quant_test/"
 
 ## 策略版本進化史
 
-| 版本 | 特色與架構 | 結果 (2022-2024) |
+| 版本 | 特色與架構 | 結果 |
 |---|---|---|
 | **v3** | Pandas 3.0 相容修復、自建簡單回測模擬器 | CAGR +34.9% (只算有進場月份) |
 | **v4** | 全面改用 vectorbt。14 個技術面/籌碼面因子。Multi-signal Regime (0050 60MA+20MA)。Softmax 權重。 | CAGR **+21.5%** / 勝率 56% / Max DD -21% |
-| **v5** | 加入 4 個基本面因子 (Earnings Yield, PB, 殖利率, PE Momentum)。修改 LightGBM NaN 處理門檻 (保留 60% 因子覆蓋即可) | CAGR **+17.0%** / Max DD -22% |
-| **(current)** | 回歸 v4 純動量與籌碼配置 (棄用會拉低近年績效的估值因子)。完全串接 vectorbt 每日精確淨值至 Plotly，並修復了下載真實 EPS 的腳本 (data_loaders/03_fix_financial.py)。 | CAGR **+21.52%** / Total Return **+79.18%** / Sharpe 1.11 |
+| **v5** | 加入 4 個基本面因子 (Earnings Yield, PB, 殖利率, PE Momentum) | CAGR **+17.0%** / Max DD -22% |
+| **(current)** | 延長訓練資料至 2019 年、流動性過濾（3000萬日均量）、Top-8 ICIR 因子自動篩選、LightGBM 強化正則化。測試期 2020~2026（74個月，含 COVID 崩盤）。實現損益追蹤（cost_basis 記錄）。 | CAGR **+17.22%** / Total Return **+212.38%** / Sharpe 0.82 / Max DD 36.27% |
 
 > **洞見**：v5 績效低於 v4，原因在於 2022-2024 是 AI 成長股領漲的行情，價值因子反而會錯失飆股。直接打包了 v4 的強大動能邏輯與完美的 vectorbt 精確報表，為目前最強穩定版本。
 
@@ -153,20 +153,27 @@ GITHUB_PAGES_URL  = "https://larryinmexico.github.io/tw_quant_test/"
 
 ---
 
-## 模型與演算法細節 (v5)
+## 模型與演算法細節 (current)
 
 1. **資料對齊 (Wide Format)**：
    全數轉為 `(date, stock_id)` 的寬表再 Unstack，解決 Pandas 3.0 `stack(dropna=True)` 改版造成的因子錯位問題。
-2. **Rollling Walk-Forward CV (Purged)**：
-   訓練 36 個月，Purge 1 個月避免 Lookahead Bias，測試 3 個月。步進式迴圈訓練 LightGBM。
-3. **特徵處理**：
+2. **Rolling Walk-Forward CV (Purged)**：
+   訓練 48 個月，Purge 1 個月避免 Lookahead Bias，測試 3 個月。步進式迴圈訓練 LightGBM。
+3. **IC 分析 + 自動因子篩選**：
+   計算 14 個因子的 ICIR，自動保留 Top-8 絕對 ICIR 因子。當前最佳因子：
+   `trust_net_10d, atr_rel, mom_1m, rsi_14, mom_1m_ra, vol_ratio, rev_mom, price_52w`
+4. **特徵處理**：
    因子進行 Cross-Sectional Z-Score (截面標準化)，避免受大盤絕對數值影響。
-4. **目標值 (Y)**：
+5. **目標值 (Y)**：
    下個月的「超額報酬」 (Next Month Return - Median Market Return)。
-5. **Softmax 選股權重**：
-   不採用 Equal Weight，而是取出預測前 20 名，用 `softmax(score / temp)` 分配權重，提高模型信心部位的佔比。溫度 `WEIGHT_TEMP=5.0` → 趨近等權，可調低至 1.5~2.0 使高分股佔更多比例。
-6. **NaN 處理**：
-   決策樹原生支援 Missing Values，v5 允許單檔股票缺失達 40% 的因子仍參與訓練，避免基本面資料缺失導致樣本被丟棄。
+6. **Softmax 選股權重**：
+   取出預測前 20 名，用 `softmax(score / temp)` 分配權重。溫度 `WEIGHT_TEMP=5.0`。
+7. **流動性過濾**：
+   建倉前過濾掉 30 日均量 < 3000萬台幣的股票，避免買進難以實際成交的小市值股。
+8. **成本追蹤（cost_basis）**：
+   `portfolio.json` 中 `cost_basis` 欄位記錄每支持股的買入均價（含 0.1% 滑價），換倉時計算並顯示真實實現損益。
+9. **force_rebalance 機制**：
+   在 `portfolio.json` 中設定 `"force_rebalance": true` 可強制觸發換倉（如更換模型後），執行一次後自動清除。
 
 ## 高嚴重度問題待解決
 

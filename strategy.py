@@ -32,16 +32,16 @@ CACHE          = "finmind_cache"
 TRAIN_MONTHS   = 48       # rolling train window (延長到 48 個月)
 PURGE_MONTHS   = 1        # purge gap (data-leakage prevention)
 STEP_MONTHS    = 3        # retrain every N months
-TEST_START     = pd.Timestamp("2019-01-01")  # ✅ FIX1: 延長回測期（原 2022-01-01）
+TEST_START     = pd.Timestamp("2019-01-01")  # FIX1: 延長回測期（原 2022-01-01）
 TOP_K          = 20       # concentrated portfolio
 WEIGHT_TEMP    = 5.0      # softmax temperature
 FEE            = 1.425 / 1000 / 3
 TAX            = 3 / 1000
 STOP_LOSS      = 0.10
 INIT_CASH      = 1_000_000
-# ✅ FIX2: 流動性過濾門檻（30天均量 > 3000萬台幣才可進場）
+# FIX2: 流動性過濾門檻（30天均量 > 3000萬台幣才可進場）
 LIQUIDITY_MIN  = 30_000_000
-# ✅ FIX3: 因子精簡 — 自動選 ICIR 絕對值前 N 個
+# FIX3: 因子精簡 — 自動選 ICIR 絕對值前 N 個
 TOP_FACTORS_K  = 8
 
 # ─── 1. Data loading ─────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ print(f"  Date range: {all_dates[0].date()} ~ {all_dates[-1].date()}")
 print(f"  Stocks: {X.index.get_level_values(1).nunique()} unique")
 
 if X.empty:
-    print("❌ X is empty — check cache files")
+    print("[ERROR] X is empty — check cache files")
     sys.exit(1)
 
 # ─── 4. IC analysis ───────────────────────────────────────────────────────────
@@ -287,20 +287,20 @@ ic_df = (pd.DataFrame(ic_results).T
            .sort_values("ICIR", key=abs, ascending=False))
 print(ic_df.round(4).to_string())
 
-# ✅ FIX3: 自動選出 ICIR 最高的 TOP_FACTORS_K 個因子
+# FIX3: 自動選出 ICIR 最高的 TOP_FACTORS_K 個因子
 top_factors = ic_df.head(TOP_FACTORS_K).index.tolist()
-print(f"\n  ▶ Auto-selected top {TOP_FACTORS_K} factors by |ICIR|: {top_factors}")
-X = X[top_factors]   # 只保留高 ICIR 因子，降低 overfitting 風險
+print(f"\n  >> Auto-selected top {TOP_FACTORS_K} factors by |ICIR|: {top_factors}")
+X = X[top_factors]
 
 # ─── 5. Walk-forward Purged training ─────────────────────────────────────────
-print("\n[5/7] Walk-Forward Purged training…")
+print("\n[5/7] Walk-Forward Purged training...")
 
 try:
     import lightgbm as lgb
 except ImportError:
-    print("❌ Install lightgbm first"); sys.exit(1)
+    print("[ERROR] Install lightgbm first"); sys.exit(1)
 
-# ✅ FIX3: 強化 LightGBM 正則化，降低 Overfitting
+# FIX3: 強化 LightGBM 正則化，降低 Overfitting
 LGBM_PARAMS = dict(
     n_estimators=500,        # 從 800 降至 500（避免過擬合）
     max_depth=3,             # 從 4 降至 3（更淺的樹）
@@ -322,6 +322,7 @@ print(f"  Test period : {test_dates[0].strftime('%Y-%m')} ~ {test_dates[-1].strf
 all_preds         = []
 current_train_end = None
 model             = None
+retrain_count     = 0
 
 for d in tqdm(test_dates, desc="  Walk-Forward"):
     # Retrain?
@@ -349,6 +350,7 @@ for d in tqdm(test_dates, desc="  Walk-Forward"):
                        lgb.log_evaluation(period=-1)],
         )
         current_train_end = d + pd.DateOffset(months=STEP_MONTHS)
+        retrain_count += 1
 
     # Predict
     X_d = X[X.index.get_level_values(0) == d]
@@ -357,7 +359,7 @@ for d in tqdm(test_dates, desc="  Walk-Forward"):
         all_preds.append(pd.DataFrame({"y_pred": preds_d}, index=X_d.index))
 
 final_preds = pd.concat(all_preds)
-print(f"\n  ✅ {len(final_preds):,} predictions — {len(tqdm._instances)} retrain cycles")
+print(f"\n  {len(final_preds):,} predictions — {retrain_count} retrain cycles")
 
 # Feature importance
 fi = (pd.DataFrame({"Factor": X.columns, "Importance": model.feature_importances_})
@@ -497,8 +499,8 @@ rows = [
     ("Active Months",  f"{active_months} / {len(weights_df)}", "35 / 35"),
 ]
 for label, s_val, b_val in rows:
-    win = "✓" if label in ["CAGR","Total Return","Sharpe (Monthly Ann.)"] and float(s_val.rstrip("% ")) > float(b_val.rstrip("% ")) else \
-          "✓" if label == "Max Drawdown" and float(s_val.rstrip("% ")) > float(b_val.rstrip("% ")) else " "
+    win = "*" if label in ["CAGR","Total Return","Sharpe (Monthly Ann.)"] and float(s_val.rstrip("% ")) > float(b_val.rstrip("% ")) else \
+          "*" if label == "Max Drawdown" and float(s_val.rstrip("% ")) > float(b_val.rstrip("% ")) else " "
     print(f"  ║ {label:<18} ║ {s_val:>12} {win} ║ {b_val:>13} ║")
 
 print("  ╚════════════════════╩═══════════════╩════════════════╝")
@@ -516,8 +518,8 @@ final_preds.to_pickle("predictions.pkl")
 weights_df.to_pickle("weights.pkl")
 eq.to_pickle("eq.pkl")
 eq_bm.to_pickle("bm_eq.pkl")
-print("\n  📦 Saved: predictions.pkl / weights.pkl / eq.pkl")
+print("\n  Saved: predictions.pkl / weights.pkl / eq.pkl")
 
-print("\n✅ Done!")
+print("\nDone!")
 import subprocess
 subprocess.run(["python3", "reports/generate_report.py"])
