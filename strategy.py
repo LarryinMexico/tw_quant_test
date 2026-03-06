@@ -226,7 +226,7 @@ factor_defs = {
     # NEW v4 factors
     "mom_1m_ra"      : resample_monthly(mom_1m_ra),     # risk-adj momentum
     "price_52w"      : resample_monthly(price_to_52w),  # 52w high ratio
-    "breakout"       : resample_monthly(breakout_signal),
+    # "breakout"       : resample_monthly(breakout_signal), # DROP: Phase 3-A Noise Factor
     "atr_rel"        : resample_monthly(atr_rel),       # relative volatility
     "rev_accel"      : resample_monthly(rev_accel_d),   # revenue acceleration
 }
