@@ -202,59 +202,73 @@ is_rebalance_day = force_rebalance or \
                    (len(pf["positions"]) == 0 and not target_weights.empty)
 
 trade_logs = []
-session_pnl = None  # 本次換倉的損益
+session_realized_pnl = 0.0  # 真實實現損益（賣出收入 - 原始買入成本）
+session_has_pnl = False
 
 if is_rebalance_day:
     print(f"  觸發部位調整 (目前現金: {pf['cash']:,.0f})")
-    sell_revenue = 0.0
-    sell_cost_basis = 0.0  # 用於估算損益（買入成本以 portfolio 記錄為準）
+    cost_basis = pf.get("cost_basis", {})  # {stock_id: avg_cost_per_share}
 
-    # ── 全部平倉（加入手續費 + 稅 + 滑價）
+    # ── 全部平倉（加入手續費 + 稅 + 滑價），計算真實實現損益
     for stock, shares in list(pf["positions"].items()):
         if stock in latest_prices:
             raw_price   = latest_prices[stock]
-            slip_price  = raw_price * (1 - SLIPPAGE)  # 賣出滑價（略低於市價）
+            slip_price  = raw_price * (1 - SLIPPAGE)
             revenue     = shares * slip_price
             fee_tax     = revenue * (FEE_RATE + TAX_RATE)
             net_revenue = revenue - fee_tax
             pf["cash"] += net_revenue
-            sell_revenue += net_revenue
             cn_name = name_map.get(str(stock), stock)
-            trade_logs.append(f"賣出 {stock} {cn_name} {shares}股 @{slip_price:.1f} 淨收 {net_revenue:,.0f}")
-    pf["positions"] = {}
-    current_nav = pf["cash"]  # 全回現金後更新基準
 
-    # ── 再建倉（風控：最多投入 MAX_INVEST_RATIO = 90%）
+            # 真實實現損益 = 賣出淨收 - 原始買入成本
+            orig_cost = cost_basis.get(stock, None)
+            if orig_cost is not None:
+                real_cost   = shares * orig_cost  # 當初買入的總成本
+                stock_pnl   = net_revenue - real_cost
+                sign        = "+" if stock_pnl >= 0 else ""
+                session_realized_pnl += stock_pnl
+                session_has_pnl = True
+                trade_logs.append(
+                    f"賣出 {stock} {cn_name} {shares}股成本@{orig_cost:.2f}"
+                    f" 賣@{slip_price:.1f} 實現{sign}{stock_pnl:,.0f}"
+                )
+            else:
+                trade_logs.append(f"賣出 {stock} {cn_name} {shares}股 @{slip_price:.1f} 淨收 {net_revenue:,.0f}")
+
+    pf["positions"] = {}
+    pf["cost_basis"] = {}    # 清空舊成本記錄
+    current_nav = pf["cash"]
+
+    # ── 再建倉（風控），並記錄新成本
     if not target_weights.empty:
         investable_cash = current_nav * MAX_INVEST_RATIO
+        new_cost_basis  = {}
         buy_total_cost  = 0.0
         for stock, w in target_weights.items():
             if stock not in latest_prices:
                 continue
-            budget    = investable_cash * w
-            raw_price = latest_prices[stock]
-            slip_price = raw_price * (1 + SLIPPAGE)  # 買入滑價（略高）
-            shares    = int(budget // slip_price)
-            cost      = shares * slip_price
-            fee       = cost * FEE_RATE
+            budget     = investable_cash * w
+            raw_price  = latest_prices[stock]
+            slip_price = raw_price * (1 + SLIPPAGE)
+            shares     = int(budget // slip_price)
+            cost       = shares * slip_price
+            fee        = cost * FEE_RATE
 
             if shares > 0 and (pf["cash"] - cost - fee) >= 0:
                 pf["positions"][stock] = shares
+                pf["cost_basis"][stock] = round(slip_price, 4)  # 記錄買入均價
                 pf["cash"] -= (cost + fee)
                 buy_total_cost += (cost + fee)
                 cn_name = name_map.get(str(stock), stock)
                 trade_logs.append(f"買進 {stock} {cn_name} {shares}股 @{slip_price:.1f} 成本 {cost+fee:,.0f}")
 
-        # 估算損益（本次賣出淨收 - 本次買進成本）
-        session_pnl = sell_revenue - buy_total_cost if sell_revenue > 0 else None
-
     pf["last_trade_date"] = str(latest_date.date())
 
     # 記錄到 trade_log_history
     pf["trade_log_history"].append({
-        "date": str(latest_date.date()),
-        "logs": trade_logs[:20],
-        "pnl":  round(session_pnl, 2) if session_pnl is not None else None,
+        "date":         str(latest_date.date()),
+        "logs":         trade_logs[:25],
+        "realized_pnl": round(session_realized_pnl, 2) if session_has_pnl else None,
     })
 
 # ─── 8. 記錄歷史 NAV ──────────────────────────────────────────────────────────────
@@ -303,9 +317,9 @@ for stock, shares in top_holdings:
     top5_lines += f"  {stock} {cn_name} {shares}股 {val:,.0f}\n"
 
 pnl_line = ""
-if session_pnl is not None:
-    sign = "+" if session_pnl >= 0 else ""
-    pnl_line = f"換倉損益估算 {sign}{session_pnl:,.0f}\n"
+if session_has_pnl:
+    sign     = "+" if session_realized_pnl >= 0 else ""
+    pnl_line = f"換倉實現損益 {sign}{session_realized_pnl:,.0f}\n"
 
 msg = f"""模擬交易 
 日期 {latest_date.date()}
@@ -325,5 +339,6 @@ if trade_logs:
 send_line_message(msg)
 print("\n今日實盤模擬完成")
 print(f"   NAV: {current_nav:,.0f}  現金: {pf['cash']:,.0f} ({cash_ratio:.1%})")
-if session_pnl is not None:
-    print(f"   換倉損益估算: {session_pnl:+,.0f}")
+if session_has_pnl:
+    print(f"   換倉實現損益: {session_realized_pnl:+,.0f}")
+

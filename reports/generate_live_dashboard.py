@@ -194,10 +194,13 @@ trade_detail_html = ""
 if trade_log_history:
     for entry in reversed(trade_log_history[-10:]):
         d        = entry.get("date", "")
-        pnl      = entry.get("pnl", None)
+        pnl      = entry.get("realized_pnl", entry.get("pnl", None))  # 向下相容舊欄位
         logs     = entry.get("logs", [])
         pnl_color = TV_GREEN if pnl and pnl >= 0 else TV_RED
-        pnl_str  = f'　損益: <span style="color:{pnl_color};">{"+" if pnl and pnl>=0 else ""}{pnl:,.0f}</span>' if pnl is not None else ""
+        pnl_label = "實現損益" if "realized_pnl" in entry else "損益估算"
+        pnl_sign = "+" if pnl and pnl >= 0 else ""
+        pnl_str  = (f'　{pnl_label}: <span style="color:{pnl_color};">'
+                    f'{pnl_sign}{pnl:,.0f}</span>') if pnl is not None else ""
         logs_li  = "".join(f"<li>{l}</li>" for l in logs)
         trade_detail_html += f"""
         <div class="trade-entry">
