@@ -189,7 +189,16 @@ if not target_weights.empty:
 
 current_stocks   = set(pf["positions"].keys())
 target_stocks    = set(target_weights.index[target_weights > 0]) if not target_weights.empty else set()
-is_rebalance_day = (current_stocks != target_stocks) or \
+
+# force_rebalance 旗標：在 portfolio.json 中設 "force_rebalance": true 可強制換倉
+# 用途：更換模型、調整 weight cap 等參數後手動觸發（執行後自動清除）
+force_rebalance  = pf.get("force_rebalance", False)
+if force_rebalance:
+    print("  [force_rebalance=true] 強制換倉模式，換倉後將自動清除旗標")
+    pf["force_rebalance"] = False  # 執行後自動清除，避免每天都換
+
+is_rebalance_day = force_rebalance or \
+                   (current_stocks != target_stocks) or \
                    (len(pf["positions"]) == 0 and not target_weights.empty)
 
 trade_logs = []
