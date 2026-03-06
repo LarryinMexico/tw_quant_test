@@ -1,85 +1,130 @@
-這是一套基於Python與MachineLearning的台股量化選股與自動回測紙上交易系統
-本系統採用FinMind作為免費每日資料來源
-並以vectorbt進行回測
+# 台股 ML 量化選股系統
 
-## 系統架構與流程
+基於 Python 與 Machine Learning 的台股量化選股與自動回測紙上交易系統。
+採用 FinMind 作為免費每日資料來源，以 vectorbt 進行精確回測，LightGBM 進行選股預測。
 
-整個專案由三個核心階段所構成
+## 系統架構
+
+整個專案由三個核心階段構成：
 
 ### 1 資料層
-負責向API爬取資料並寫入本地快取
-- data_loaders/01_fetch_finmind_data 抓取價量營收三大法人數據
-- data_loaders/02_fetch_fundamental_data 抓取財報比率
-- data_loaders/03_fix_financial 針對EPS稅後淨利做專屬抓取與修正
+- `data_loaders/01_fetch_finmind_data.py` 抓取價量、月營收、三大法人數據
+- `data_loaders/02_fetch_fundamental_data.py` 抓取財報比率（PE/PB/殖利率）
 
 ### 2 回測與策略層
-- strategy 終極模型
-  利用過去三年動能與籌碼建立特徵
-  經過LightGBM特徵篩選
-  並套用趨勢濾網產出每月推薦的Top20股票機率分佈並交給vectorbt回測
-- reports/generate_report 生成14張圖表的PlotlyDashboard
-  具備極高精準度的淨值回撤風險等分析數據
+- `strategy.py` 終極 ML 選股模型
+  - Walk-Forward Purged CV（48個月訓練視窗，Purge 1個月）
+  - Fold-Internal IC 分析（在每個 fold 的訓練資料內動態選出 Top-8 ICIR 因子）
+  - Multi-signal Regime Filter（0050 均線濾網，只在多頭進場）
+  - Softmax 信心加權（前 20 名持股）
+  - 流動性過濾（30日均量 > 3000萬才可進場）
+- `reports/generate_report.py` 生成 14 張圖表的 Plotly Dashboard
 
-### 3 實盤與紙上交易
-- live_trade 每日盤後從雲端自動啟動
-  它會重新抓一次今天最新的價格計算目前虛擬基金部位的未實現損益
-  然後推播LINE報告給你（含 Dashboard 網頁連結）
-  並在月底自動進行虛擬換股
-- portfolio 你的虛擬存摺
-  紀錄目前可用的現金餘額買進的股票清單以及過往績效歷史
+### 3 實盤紙上交易
+- `live_trade.py` 每日盤後（台灣時間約 15:30）自動：
+  - 從 yfinance + FinMind 抓取最新收盤價，計算未實現損益
+  - 月底自動換倉，計算並記錄真實**實現損益**（基於 cost_basis 成本基礎）
+  - 推播 LINE 通知 + 更新 GitHub Pages Dashboard
+- `portfolio.json` 虛擬存摺（含 cost_basis 每股成本）
 
-## 為什麼排除基本面
-經過演化測試
-由於2022至2024年主要是AI成長股的牛市
-價值投資因子反而會導致模型錯失飆漲的暴發股
-因此在此時空背景下排除基本面的籌碼與技術動能模型反而是最強解
+## 最新績效數字（Phase 1+2 嚴格方法論修正後）
 
-## 如何在本地端手動更新策略
+> 此為截至 2026-03 的回測結果（2020~2026，含 COVID 崩盤）
 
-未來想自己重新跑一次三年歷史回測
-只要依序執行下列動作
+| 指標 | 策略 | 0050 Benchmark |
+|------|------|---------------|
+| CAGR | +4.59% | +26.59% |
+| Total Return | +37.9% | +441.5% |
+| Sharpe | 0.30 | 1.23 |
+| Max DD | -39.55% | -33.83% |
 
-```bash
-source .venv/bin/activate
-python3 data_loaders/01_fetch_finmind_data.py
-./run.sh
-```
+> 0050 Benchmark 使用 yfinance `auto_adjust=True` 計算，已正確還原 2020年11月的 3:1 股票分割。
 
-## 雲端全自動化設計
+**重要說明**：過去版本 CAGR 顯示 +17.22% 是因為手續費低估（`FEE/3` 的計算錯誤）+ Benchmark 未還原分割（顯示 0.29% 假值）+ 因子選擇 Lookahead Bias。Phase 1+2 修正後數字才是可信的基準。
 
-我們將程式碼推播至私有的GitHubRepo
-透過LINE變數發佈通知
-使用GitHubActions保留FinMind的資料庫
-讓它每日只需花極短的時間接續抓取增量資訊
-每日盤後自動推算出虛擬基金資產與未來部位
-發佈到前端網頁與LINE
-徹底解放人工盯盤
-
-## GitHub Pages Dashboard
+## Live Dashboard
 
 https://larryinmexico.github.io/tw_quant_test/
 
 每日盤後（台灣時間 15:30 後約 5～30 分鐘）自動更新
+
+## 如何在本地端手動更新策略
+
+```bash
+# 1. 更新資料（約 4 小時）
+source .venv/bin/activate
+python3 data_loaders/01_fetch_finmind_data.py
+
+# 2. 重新訓練模型（約 5~15 分鐘）
+python3 strategy.py
+
+# 3. 生成回測報告
+python3 reports/generate_report.py
+```
+
+## 雲端全自動化設計
+
+透過 GitHub Actions（UTC 07:30 = 台灣 15:30，週一到週五），每日盤後自動：
+1. 執行 `live_trade.py` 計算損益、更新資料
+2. 生成最新 Dashboard HTML
+3. Push 更新至 GitHub，觸發 GitHub Pages 部署
+4. 發送 LINE 通知（含 Dashboard 連結與當日損益）
+
+## 關鍵設計決策
+
+### 為何使用 Fold-Internal IC 分析（Phase 2）
+原先在全部 2020~2026 資料上計算 ICIR 再選因子，等同讓因子選擇「看到了未來」（Lookahead Bias）。
+修正後，每次 Walk-Forward retrain 時只在該 fold 的訓練資料內計算 ICIR，以真正的 OOS 方式選因子。
+
+### 為何放棄基本面因子
+2022~2024 是 AI 成長股領漲的牛市，價值投資因子反而會讓模型錯失飆漲暴發股。
+目前使用技術面 + 籌碼面 14 個因子，Fold-Internal IC 自動選出最穩定的 Top-8。
+
+### 費用模型
+| 方向 | 手續費 | 交易稅 | 滑價 | 合計 |
+|------|--------|--------|------|------|
+| 買進 | 0.1425% | — | +0.1% | 0.2425% |
+| 賣出 | 0.1425% | 0.3% | -0.1% | 0.5425% |
+| **一圈** | | | | **約 0.79%** |
 
 ## Unit Tests
 
 測試涵蓋核心交易邏輯，不需要 API Token，全部使用 mock data
 
 ```bash
-# 安裝完依賴後執行
 source .venv/bin/activate
 python3 -m pytest tests/ -v
 ```
 
-預期結果：25 passed  
-測試項目：
+預期結果：25 passed
 
 | 測試檔案 | 涵蓋項目 |
 |---------|---------|
-| tests/test_live_trade.py | 買入手續費、賣出稅費、滑價方向、Weight Cap 8% 上限、現金保留 ≥10%、NAV 計算 |
-| tests/test_strategy_utils.py | Softmax 權重加總=1、高/低溫度行為、Z-score 截面正規化、Winsorize ±3σ、迭代 Weight Cap 收斂 |
+| `tests/test_live_trade.py` | 買入手續費、賣出稅費、滑價方向、Weight Cap 8% 上限、現金保留 ≥10%、NAV 計算 |
+| `tests/test_strategy_utils.py` | Softmax 權重加總=1、高/低溫度行為、Z-score 截面正規化、Winsorize ±3σ、迭代 Weight Cap 收斂 |
 
-測試設計原則：
-- 費用模型：買入 0.1425% + 0.1% 滑價；賣出 0.1425% + 0.3% 稅 + 0.1% 滑價
-- Weight cap 使用迭代收斂（最多20次），確保重新正規化後仍無超過8%的股票
-- 需要至少13支股票才能在8%上限下分配完整（ceil(1/0.08)=13）
+## force_rebalance 手動換倉
+
+在 `portfolio.json` 加一行，下一次 Actions 執行時就會強制換倉（執行後自動清除）：
+
+```json
+{
+  "force_rebalance": true,
+  ...
+}
+```
+
+適用於：更換模型、調整參數、重大市場事件後希望立即更新倉位。
+
+## Research Notebooks（探索與優化用）
+
+`Research/` 目錄下依序執行，共享記憶體變數：
+
+| Notebook | 用途 |
+|----------|------|
+| `01_Data_Pipeline.ipynb` | 資料載入 + 流動性快速檢查 |
+| `02_Feature_Engineering.ipynb` | 14 因子計算 + IC 分析 + Top-8 ICIR 篩選 |
+| `03_Model_Training.ipynb` | Walk-Forward + LightGBM + Regime Filter |
+| `04_Backtester.ipynb` | vectorbt 回測 + 月度報酬熱力圖 |
+
+詳細的 Phase 3 優化研究路線圖見 `AGENTS.md`。
