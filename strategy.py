@@ -34,7 +34,7 @@ PURGE_MONTHS   = 1        # purge gap (data-leakage prevention)
 STEP_MONTHS    = 3        # retrain every N months
 TEST_START     = pd.Timestamp("2019-01-01")  # FIX1: 延長回測期（原 2022-01-01）
 TOP_K          = 40       # optimized portfolio size from Sweep
-WEIGHT_TEMP    = 5.0      # softmax temperature
+WEIGHT_TEMP    = 0.5      # softmax temperature (optimized from Sweep)
 FEE            = 1.425 / 1000   # 0.1425% 單邊手續費（vectorbt fees 參數為單邊）
 TAX            = 3 / 1000
 # STOP_LOSS 已移除（從未實作停損機制）
