@@ -31,16 +31,16 @@
 
 > 此為截至 2026-03 的回測結果（2020~2026，含 COVID 崩盤）
 
-| 指標 | 策略 (TOP_K=40) | 0050 Benchmark |
+| 指標 | 策略 (Phase 3 最終版) | 0050 Benchmark |
 |------|------|---------------|
-| CAGR | +8.53% | +26.59% |
-| Total Return | +79.77% | +441.5% |
-| Sharpe | 0.51 | 1.23 |
-| Max DD | -34.30% | -33.83% |
+| CAGR | +9.25% | +26.59% |
+| Total Return | +88.58% | +441.5% |
+| Sharpe | 0.54 | 1.23 |
+| Max DD | -28.30% | -33.83% |
 
 > 0050 Benchmark 使用 yfinance `auto_adjust=True` 計算，已正確還原 2020年11月的 3:1 股票分割。
 
-**重要說明**：過去版本 CAGR 顯示 +17.22% 是因為手續費低估（`FEE/3` 的計算錯誤）+ Benchmark 未還原分割（顯示 0.29% 假值）+ 因子選擇 Lookahead Bias。Phase 1+2 修正後，再加上 Phase 3的 TOP_K=40 優化，目前 CAGR 已回升至 8.53%。
+**重要說明**：過去版本 CAGR 顯示 +17.22% 是因為手續費低估（`FEE/3` 的計算錯誤）+ Benchmark 未還原分割（顯示 0.29% 假值）+ 因子選擇 Lookahead Bias。Phase 1~3 修正與優化後，採用 `TOP_K=40`、`keep_top_k=80` (Turnover Inertia)、`WEIGHT_TEMP=5.0` (Equal-Weighting) 大幅降低換倉摩擦成本與集中風險，使 Max DD 降至 -28.30%，CAGR 回升至 9.25%。真實反映了扣除高昂手續費與滑價後的實盤預期數字。
 
 ## Live Dashboard
 

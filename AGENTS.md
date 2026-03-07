@@ -135,9 +135,9 @@ GITHUB_PAGES_URL  = "https://larryinmexico.github.io/tw_quant_test/"
 | **v4** | vectorbt + 14個因子 + Regime + Softmax | 2022~2024 | CAGR +21.5% / Sharpe 1.11 |
 | **v5** | 加入基本面因子（Earnings Yield, PB, 殖利率）| 2022~2024 | CAGR +17.0% / Max DD -22% |
 | **(P1 修正前)** | 延長至 2020~2026 + 流動性過濾 + Top-8 ICIR（全資料）| 2020~2026 | CAGR +17.22%（**費用低估 3x + Benchmark 失真**）|
-| **(current / P1...P3)** | Phase 1（手續費/Benchmark修正）+ Phase 2（消除 lookahead bias）+ Phase 3（TOP_K=40 優化） | 2020~2026（含 COVID）| CAGR **+8.53%** / Total +79.77% / Sharpe 0.51 / Max DD -34.30% |
+| **(current / P1...P3)** | Phase 1（手續費/Benchmark修正）+ Phase 2（消除 lookahead bias）+ Phase 3（TOP_K=40 + Inertia） | 2020~2026（含 COVID）| CAGR **+9.25%** / Total +88.58% / Sharpe 0.54 / Max DD -28.30% |
 
-> **重要洞見**：0050 (Benchmark) 在 2020~2026 的真實 CAGR 為 **+26.59%**（yfinance 還原 2020年11月 3:1 分割）。我們經過徹底排除作弊函數(P2)後，利用參數優化找到 TOP_K=40 目前讓年化拉回到了 8.53%！
+> **重要洞見**：0050 (Benchmark) 在 2020~2026 的真實 CAGR 為 **+26.59%**（yfinance 還原 2020年11月 3:1 分割）。我們經過徹底排除作弊函數(P2)後，利用 P3 最新的緩衝懲罰(Inertia keep_top 80)，成功把 Max DD 壓扁到 -28.30%，並讓 CAGR 真實回升到 9.25% (已扣除每月高額手續費與滑價)。
 
 ---
 
@@ -184,7 +184,7 @@ GITHUB_PAGES_URL  = "https://larryinmexico.github.io/tw_quant_test/"
 
 | 問題 | 狀態 | 說明 |
 |------|------|------|
-| 策略跑輸 0050 | 優化中 | Phase 3優化後 CAGR 回升至 8.53% vs 0050的 26.59% (持續研究) |
+| 策略跑輸 0050 | 優化中 | Phase 3優化後 CAGR 回升至 9.25% vs 0050的 26.59% (持續研究) |
 | `price_52w` 因子 | 觀察中 | ICIR Stability 分析中被評為 KEEP |
 | `breakout` 因子 | 已刪除 | ICIR Stability 驗證為雜訊 (DROP) 已於 P3-A 階段拔除 |
 
