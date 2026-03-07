@@ -34,7 +34,7 @@ PURGE_MONTHS   = 1        # purge gap (data-leakage prevention)
 STEP_MONTHS    = 3        # retrain every N months
 TEST_START     = pd.Timestamp("2019-01-01")  # FIX1: 延長回測期（原 2022-01-01）
 TOP_K          = 40       # optimized portfolio size from Sweep
-WEIGHT_TEMP    = 0.5      # softmax temperature (optimized from Sweep)
+WEIGHT_TEMP    = 5.0      # softmax temperature (equal weight to cut turnover)
 FEE            = 1.425 / 1000   # 0.1425% 單邊手續費（vectorbt fees 參數為單邊）
 TAX            = 3 / 1000
 # STOP_LOSS 已移除（從未實作停損機制）
@@ -424,9 +424,22 @@ print(f"  Bull months: {bull_months} / {len(is_bull_monthly)} "
       f"({bull_months/len(is_bull_monthly):.0%})  ← was 54% in v3")
 
 # ══ Softmax confidence weighting ══════════════════════════════════════════════
-def softmax_weights(scores: pd.Series, temp: float, top_k: int) -> pd.Series:
-    """Select top_k stocks; weight by softmax(score / temp)."""
-    top = scores.nlargest(top_k)
+def softmax_weights(scores: pd.Series, temp: float, top_k: int, prev_stocks: set=None, keep_top_k: int=60) -> pd.Series:
+    """Select top_k stocks with inertia; weight by softmax(score / temp)."""
+    if prev_stocks is not None and keep_top_k > 0:
+        ranks = scores.rank(ascending=False, method="first")
+        kept_stocks = [s for s in prev_stocks if s in ranks.index and ranks[s] <= keep_top_k]
+        needed = top_k - len(kept_stocks)
+        if needed > 0:
+            remaining_scores = scores.drop(labels=kept_stocks, errors='ignore')
+            new_stocks = remaining_scores.nlargest(needed).index.tolist()
+            final_stocks = kept_stocks + new_stocks
+        else:
+            final_stocks = kept_stocks[:top_k]
+        top = scores[final_stocks]
+    else:
+        top = scores.nlargest(top_k)
+        
     exp_  = np.exp((top - top.max()) / temp)   # numerical stable
     return exp_ / exp_.sum()
 
@@ -434,6 +447,7 @@ def softmax_weights(scores: pd.Series, temp: float, top_k: int) -> pd.Series:
 money_m_liq = money_wide.rolling(30).mean().resample("ME").last()
 
 weight_rows = {}
+prev_stocks = None
 for date, row in pred_wide.iterrows():
     row = row.dropna()
 
@@ -441,15 +455,15 @@ for date, row in pred_wide.iterrows():
     if date in money_m_liq.index:
         liq_row  = money_m_liq.loc[date].reindex(row.index)
         liq_ok   = liq_row[liq_row >= LIQUIDITY_MIN].index
-        filtered = len(row) - len(liq_ok)
         row      = row[liq_ok]
-        if filtered > 0:
-            pass  # silent: print(f"  {date.date()}: 流動性過濾移除 {filtered} 支")
 
     if is_bull_monthly.get(date, False) and len(row) >= TOP_K:
-        weight_rows[date] = softmax_weights(row, WEIGHT_TEMP, TOP_K)
+        w = softmax_weights(row, WEIGHT_TEMP, TOP_K, prev_stocks, keep_top_k=80)
+        weight_rows[date] = w
+        prev_stocks = set(w.index)  # 記錄當月持股供下個月留校察看
     else:
         weight_rows[date] = pd.Series(dtype=float)
+        prev_stocks = None  # 空頭平倉後重置
 
 # Wide weight table: rows=months, cols=stocks (0 for not held)
 all_stocks   = pred_wide.columns
