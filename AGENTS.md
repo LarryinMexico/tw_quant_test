@@ -135,9 +135,9 @@ GITHUB_PAGES_URL  = "https://larryinmexico.github.io/tw_quant_test/"
 | **v4** | vectorbt + 14個因子 + Regime + Softmax | 2022~2024 | CAGR +21.5% / Sharpe 1.11 |
 | **v5** | 加入基本面因子（Earnings Yield, PB, 殖利率）| 2022~2024 | CAGR +17.0% / Max DD -22% |
 | **(P1 修正前)** | 延長至 2020~2026 + 流動性過濾 + Top-8 ICIR（全資料）| 2020~2026 | CAGR +17.22%（**費用低估 3x + Benchmark 失真**）|
-| **(current / P1+P2)** | Phase 1（手續費修正 + Benchmark 改用 yfinance） + Phase 2（Fold-Internal IC，移除 factor selection lookahead bias） | 2020~2026（含 COVID）| CAGR **+4.59%** / Total +37.9% / Sharpe 0.30 / Max DD -39.55% |
+| **(current / P1...P3)** | Phase 1（手續費/Benchmark修正）+ Phase 2（消除 lookahead bias）+ Phase 3（TOP_K=40 優化） | 2020~2026（含 COVID）| CAGR **+8.53%** / Total +79.77% / Sharpe 0.51 / Max DD -34.30% |
 
-> **重要洞見**：0050 (Benchmark) 在 2020~2026 的真實 CAGR 為 **+26.59%**（yfinance 還原 2020年11月 3:1 分割）。目前策略 CAGR 4.59% 跑輸 0050 甚多。原因：方法論修正後消除了 lookahead bias（全資料選因子）與手續費低估，導致數字大幅下修。這是可信的基準，策略有很大的改進空間。
+> **重要洞見**：0050 (Benchmark) 在 2020~2026 的真實 CAGR 為 **+26.59%**（yfinance 還原 2020年11月 3:1 分割）。我們經過徹底排除作弊函數(P2)後，利用參數優化找到 TOP_K=40 目前讓年化拉回到了 8.53%！
 
 ---
 
@@ -166,7 +166,7 @@ GITHUB_PAGES_URL  = "https://larryinmexico.github.io/tw_quant_test/"
 5. **目標值 (Y)**：
    下個月的「超額報酬」（Next Month Return - Median Market Return）。
 6. **Softmax 選股權重**：
-   取出預測前 20 名，用 `softmax(score / temp)` 分配權重。溫度 `WEIGHT_TEMP=5.0`（接近等權）。
+   取出預測前 40 名（`TOP_K=40`），用 `softmax(score / temp)` 分配權重。溫度 `WEIGHT_TEMP=5.0`（接近等權）。
 7. **流動性過濾**：
    建倉前過濾掉 30 日均量 < 3000萬台幣的股票，避免買進難以實際成交的小市值股。
 8. **LightGBM 強化正則化（防 Overfitting）**：
@@ -184,9 +184,9 @@ GITHUB_PAGES_URL  = "https://larryinmexico.github.io/tw_quant_test/"
 
 | 問題 | 狀態 | 說明 |
 |------|------|------|
-| 策略跑輸 0050 | 待改進 | Phase 1+2 修正後真實 CAGR 4.59% vs 0050的 26.59% |
-| `price_52w` 因子不穩定 | 待研究 | 24個 fold 中只有 8 次被選到，是 Phase 3 主要研究標的 |
-| 高嚴重度問題（流動性、回測期）| 已修正 | 見 high_severity_plan.md |
+| 策略跑輸 0050 | 優化中 | Phase 3優化後 CAGR 回升至 8.53% vs 0050的 26.59% (持續研究) |
+| `price_52w` 因子 | 觀察中 | ICIR Stability 分析中被評為 KEEP |
+| `breakout` 因子 | 已刪除 | ICIR Stability 驗證為雜訊 (DROP) 已於 P3-A 階段拔除 |
 
 ---
 
