@@ -6,7 +6,7 @@ Improvements over v3:
   A2. 6 new factors: 52w-high ratio, ATR-adj momentum,
       rev acceleration, turnover, price breakout, vol trend
   A3. Confidence-weighted positions (rank softmax, not equal)
-  A4. TOP_K = 20 (more concentrated alpha)
+  A4. TOP_K = 40 (optimized portfolio size)
   A5. Tuned LightGBM w/ early stopping
   A6. vectorbt for backtesting 
 
@@ -33,7 +33,7 @@ TRAIN_MONTHS   = 48       # rolling train window (延長到 48 個月)
 PURGE_MONTHS   = 1        # purge gap (data-leakage prevention)
 STEP_MONTHS    = 3        # retrain every N months
 TEST_START     = pd.Timestamp("2019-01-01")  # FIX1: 延長回測期（原 2022-01-01）
-TOP_K          = 20       # concentrated portfolio
+TOP_K          = 40       # optimized portfolio size from Sweep
 WEIGHT_TEMP    = 5.0      # softmax temperature
 FEE            = 1.425 / 1000   # 0.1425% 單邊手續費（vectorbt fees 參數為單邊）
 TAX            = 3 / 1000
